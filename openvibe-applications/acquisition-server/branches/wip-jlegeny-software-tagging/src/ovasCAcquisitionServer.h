@@ -18,6 +18,8 @@
 
 #include <sys/timeb.h>
 
+#include "ExtStim.h"
+
 namespace OpenViBEAcquisitionServer
 {
 	class CConnectionServerHandlerThread;
@@ -47,7 +49,6 @@ namespace OpenViBEAcquisitionServer
 	} ENaNReplacementPolicy;
 
 	class CDriverContext;
-
 	class CAcquisitionServer : public OpenViBEAcquisitionServer::IDriverCallback
 	{
 	public:
@@ -72,15 +73,16 @@ namespace OpenViBEAcquisitionServer
 		virtual void setSamples(const OpenViBE::float32* pSample);
 		virtual void setSamples(const OpenViBE::float32* pSample, const OpenViBE::uint32 ui32SampleCount);
 		virtual void setStimulationSet(const OpenViBE::IStimulationSet& rStimulationSet);
-		//void setSamplesAndStimulationSet(const OpenViBE::float32* pSample, const OpenViBE::uint32 stimulationsLabels[]);
 
 		// Driver context callback
 		virtual OpenViBE::boolean isConnected(void) const { return m_bInitialized; }
 		virtual OpenViBE::boolean isStarted(void) const { return m_bStarted; }
 		virtual OpenViBE::int64 getDriftSampleCount(void) const { return m_eDriftCorrectionPolicy==DriftCorrectionPolicy_Disabled?0:m_i64DriftSampleCount; }
 		virtual OpenViBE::int64 getDriftToleranceSampleCount(void) const { return m_i64DriftToleranceSampleCount; }
-		virtual OpenViBE::int64 getSuggestedDriftCorrectionSampleCount(void) const;
 		virtual OpenViBE::boolean correctDriftSampleCount(OpenViBE::int64 i64SampleCount);
+		virtual OpenViBE::int64 getSuggestedDriftCorrectionSampleCount(void) const;
+		virtual OpenViBE::boolean setInnerLatencySampleCount(OpenViBE::int64 i64SampleCount);
+		virtual OpenViBE::int64 getInnerLatencySampleCount(void) const;
 		virtual OpenViBE::boolean updateImpedance(const OpenViBE::uint32 ui32ChannelIndex, const OpenViBE::float64 f64Impedance);
 
 		// General parameters configurable from the GUI
@@ -94,17 +96,13 @@ namespace OpenViBEAcquisitionServer
 		OpenViBE::boolean setNaNReplacementPolicy(OpenViBEAcquisitionServer::ENaNReplacementPolicy eNaNReplacementPolicy);
 		OpenViBE::boolean setDriftCorrectionPolicy(OpenViBEAcquisitionServer::EDriftCorrectionPolicy eDriftCorrectionPolicy);
 		OpenViBE::boolean isImpedanceCheckRequested(void);
-		OpenViBE::boolean isExternalTriggersEnabled(void);
 		OpenViBE::boolean setDriftToleranceDuration(OpenViBE::uint64 ui64DriftToleranceDuration);
 		OpenViBE::boolean setJitterEstimationCountForDrift(OpenViBE::uint64 ui64JitterEstimationCountForDrift);
 		OpenViBE::boolean setOversamplingFactor(OpenViBE::uint64 ui64OversamplingFactor);
 		OpenViBE::boolean setImpedanceCheckRequest(OpenViBE::boolean bActive);
-		OpenViBE::boolean setExternalTriggersEnabled(OpenViBE::boolean bActive);
 
 		//
 		virtual OpenViBE::boolean acceptNewConnection(Socket::IConnection* pConnection);
-
-		
 
 	public:
 
@@ -144,11 +142,10 @@ namespace OpenViBEAcquisitionServer
 
 		OpenViBEAcquisitionServer::ENaNReplacementPolicy m_eNaNReplacementPolicy;
 		OpenViBE::boolean m_bReplacementInProgress;
-		
+
 		OpenViBE::boolean m_bInitialized;
 		OpenViBE::boolean m_bStarted;
 		OpenViBE::boolean m_bIsImpedanceCheckRequested;
-		OpenViBE::boolean m_bIsExternalTriggerEnabled;
 		OpenViBE::boolean m_bGotData;
 		OpenViBE::boolean m_bDriftCorrectionCalled;
 		OpenViBE::uint32 m_ui64OverSamplingFactor;
@@ -167,6 +164,7 @@ namespace OpenViBEAcquisitionServer
 		OpenViBE::int64 m_i64DriftToleranceSampleCount;
 		OpenViBE::int64 m_i64DriftCorrectionSampleCountAdded;
 		OpenViBE::int64 m_i64DriftCorrectionSampleCountRemoved;
+		OpenViBE::int64 m_i64InnerLatencySampleCount;
 
 		OpenViBE::uint64 m_ui64JitterEstimationCountForDrift;
 		OpenViBE::uint64 m_ui64DriverTimeoutDuration;
@@ -182,15 +180,50 @@ namespace OpenViBEAcquisitionServer
 		{
 			OpenViBE::uint64 timestamp;
 			OpenViBE::uint64 identifier;
+			OpenViBE::boolean isProcessed;
+			OpenViBE::boolean alreadyCountedAsEarlier;
 		};
 
-		void acquireExternalStimulations(OpenViBE::CStimulationSet*, OpenViBE::Kernel::ILogManager& logm,OpenViBE::uint64 start,OpenViBE::uint64 end);
+		void addExternalStimulations(OpenViBE::CStimulationSet*, OpenViBE::Kernel::ILogManager& logm,OpenViBE::uint64 start,OpenViBE::uint64 end);
+		void readExternalStimulations();
+
+		void acquireExternalStimulationsVRPN(OpenViBE::CStimulationSet* ss, OpenViBE::Kernel::ILogManager& logm,OpenViBE::uint64 start,OpenViBE::uint64 end);
 
 		struct timeb m_CTStartTime; //time when the acquisition process started in local computer time
 
 		std::vector < SExtStim > m_vExternalStimulations;
 
+		OpenViBE::boolean m_bIsExternalTriggerEnabled;
+
+		OpenViBE::uint32 total_before_leaving_ac;
+		//OpenViBE::uint32 counter1;
+		//OpenViBE::uint32 counter2;
+		//OpenViBE::uint32 counter3;
+		//OpenViBE::uint32 totalDropped;
+
+		//VRPNTagger* m_vprnTagger;
+
+//UNUSED		bool vrpn_enabled;
+//UNUSED		void applyPriority(boost::thread* thread, int priority);
+
+		OpenViBE::boolean setExternalTriggersEnabled(OpenViBE::boolean bActive);
+		OpenViBE::boolean isExternalTriggersEnabled(void);
+
+/*UNUSED Debug stuff
 		OpenViBE::uint32 m_i32FlashesLost;
+		int stim_sent;
+		int current_read_flashes_ipc;
+		int stimulations_earlier;
+		int stimulations_late;
+		int stimulations_wrong_size;
+		int stimulations_buffered;
+*/
+
+		//added for acquiring external stimulations
+		boost::scoped_ptr<boost::thread> m_ESthreadPtr;
+		OpenViBE::boolean m_bIsESThreadRunning;
+		boost::mutex m_es_mutex;
+		boost::condition  m_esAvailable;
 	};
 };
 

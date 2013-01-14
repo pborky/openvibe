@@ -22,6 +22,8 @@
 #include <ctime> //anton
 #include <iostream>
 
+
+
 #define boolean OpenViBE::boolean
 
 namespace
@@ -96,6 +98,16 @@ namespace OpenViBEAcquisitionServer
 		virtual int64 getSuggestedDriftCorrectionSampleCount(void) const
 		{
 			return m_rAcquisitionServer.getSuggestedDriftCorrectionSampleCount();
+		}
+
+		virtual boolean setInnerLatencySampleCount(int64 i64SampleCount)
+		{
+			return m_rAcquisitionServer.setInnerLatencySampleCount(i64SampleCount);
+		}
+
+		virtual int64 getInnerLatencySampleCount(void) const
+		{
+			return m_rAcquisitionServer.getInnerLatencySampleCount();
 		}
 
 		virtual boolean updateImpedance(const uint32 ui32ChannelIndex, const float64 f64Impedance)
@@ -218,6 +230,7 @@ CAcquisitionServer::CAcquisitionServer(const IKernelContext& rKernelContext)
 	,m_bReplacementInProgress(false)
 	,m_bInitialized(false)
 	,m_bStarted(false)
+	,m_bIsExternalTriggerEnabled(false)
 {
 	m_pDriverContext=new CDriverContext(rKernelContext, *this);
 
@@ -233,7 +246,7 @@ CAcquisitionServer::CAcquisitionServer(const IKernelContext& rKernelContext)
 	ip_pStimulationSet.initialize(m_pStreamEncoder->getInputParameter(OVP_GD_Algorithm_MasterAcquisitionStreamEncoder_InputParameterId_StimulationSet));
 	ip_ui64BufferDuration.initialize(m_pStreamEncoder->getInputParameter(OVP_GD_Algorithm_MasterAcquisitionStreamEncoder_InputParameterId_BufferDuration));
 	op_pEncodedMemoryBuffer.initialize(m_pStreamEncoder->getOutputParameter(OVP_GD_Algorithm_MasterAcquisitionStreamEncoder_OutputParameterId_EncodedMemoryBuffer));
-	
+
 	CString l_sNaNReplacementPolicy=m_rKernelContext.getConfigurationManager().expand("${AcquisitionServer_NaNReplacementPolicy}");
 	if(l_sNaNReplacementPolicy==CString("Disabled"))
 	{
@@ -247,7 +260,7 @@ CAcquisitionServer::CAcquisitionServer(const IKernelContext& rKernelContext)
 	{
 		this->setNaNReplacementPolicy(NaNReplacementPolicy_LastCorrectValue);
 	}
-	
+
 
 	CString l_sDriftCorrectionPolicy=m_rKernelContext.getConfigurationManager().expand("${AcquisitionServer_DriftCorrectionPolicy}");
 	if(l_sDriftCorrectionPolicy==CString("Forced"))
@@ -267,7 +280,6 @@ CAcquisitionServer::CAcquisitionServer(const IKernelContext& rKernelContext)
 	this->setJitterEstimationCountForDrift(m_rKernelContext.getConfigurationManager().expandAsUInteger("${AcquisitionServer_JitterEstimationCountForDrift}", 128));
 	this->setOversamplingFactor(m_rKernelContext.getConfigurationManager().expandAsUInteger("${AcquisitionServer_OverSamplingFactor}", 1));
 	this->setImpedanceCheckRequest(m_rKernelContext.getConfigurationManager().expandAsBoolean("${AcquisitionServer_CheckImpedance}", false));
-	this->setExternalTriggersEnabled(m_rKernelContext.getConfigurationManager().expandAsBoolean("${AcquisitionServer_ExternalTriggers}"));
 
 	m_ui64StartedDriverSleepDuration=m_rKernelContext.getConfigurationManager().expandAsUInteger("${AcquisitionServer_StartedDriverSleepDuration}", 2);
 	m_ui64StoppedDriverSleepDuration=m_rKernelContext.getConfigurationManager().expandAsUInteger("${AcquisitionServer_StoppedDriverSleepDuration}", 100);
@@ -275,7 +287,11 @@ CAcquisitionServer::CAcquisitionServer(const IKernelContext& rKernelContext)
 
 	m_i64DriftSampleCount=0;
 
-	m_i32FlashesLost = 0; //anton
+	//check for software tagging
+	//value not memorized
+	bool st = m_rKernelContext.getConfigurationManager().expandAsBoolean("${AcquisitionServer_ExternalTriggers}",false);
+	this->setExternalTriggersEnabled(st);
+	m_bIsExternalTriggerEnabled = st;
 }
 
 CAcquisitionServer::~CAcquisitionServer(void)
@@ -390,7 +406,7 @@ boolean CAcquisitionServer::loop(void)
 
 				uint64 l_ui64TheoricalSampleCountToSkip=(l_i64SignedTheoricalSampleCountToSkip<0?0:uint64(l_i64SignedTheoricalSampleCountToSkip));
 
-				m_rKernelContext.getLogManager() << LogLevel_Error << "Sample count offset at connection : " << l_ui64TheoricalSampleCountToSkip << "\n";
+				m_rKernelContext.getLogManager() << LogLevel_Trace << "Sample count offset at connection : " << l_ui64TheoricalSampleCountToSkip << "\n";
 
 				SConnectionInfo l_oInfo;
 				l_oInfo.m_ui64ConnectionTime=itConnection->second.m_ui64ConnectionTime;
@@ -398,6 +414,7 @@ boolean CAcquisitionServer::loop(void)
 				l_oInfo.m_ui64SignalSampleCountToSkip=l_ui64TheoricalSampleCountToSkip;
 				l_oInfo.m_pConnectionClientHandlerThread=new CConnectionClientHandlerThread(*this, *l_pConnection);
 				l_oInfo.m_pConnectionClientHandlerBoostThread=new boost::thread(boost::bind(&start_connection_client_handler_thread, l_oInfo.m_pConnectionClientHandlerThread));
+				//applyPriority(l_oInfo.m_pConnectionClientHandlerBoostThread,15);
 
 				m_vConnection.push_back(pair < Socket::IConnection*, SConnectionInfo >(l_pConnection, l_oInfo));
 
@@ -456,14 +473,12 @@ boolean CAcquisitionServer::loop(void)
 	{
 		boolean l_bResult;
 		boolean l_bTimeout;
-
 		if(this->isStarted())
 		{
 			l_bResult=true;
 			l_bTimeout=false;
 			m_bGotData=false;
 			uint32 l_ui32StartTime=System::Time::getTime();
-
 			while(l_bResult && !m_bGotData && !l_bTimeout)
 			{
 				// Calls driver's loop
@@ -513,9 +528,9 @@ boolean CAcquisitionServer::loop(void)
 
 			if(l_rInfo.m_ui64SignalSampleCountToSkip<m_ui32SampleCountPerSentBlock)
 			{
-				#if DEBUG_STREAM
+#if DEBUG_STREAM
 				m_rKernelContext.getLogManager() << LogLevel_Debug << "Creating buffer for connection " << uint64(l_pConnection) << "\n";
-				#endif
+#endif
 
 				// Signal buffer
 				for(uint32 j=0; j<m_ui32ChannelCount; j++)
@@ -526,25 +541,14 @@ boolean CAcquisitionServer::loop(void)
 					}
 				}
 
-				/*for(int p=0;p<m_oPendingStimulationSet.getStimulationCount();p++)
-				{
-					if (m_oPendingStimulationSet.getStimulationIdentifier(p) == OVTK_StimulationId_Label_00)
-					{
-						counter2++;
-					}
-				}*/
-
 				// Stimulation buffer
 				CStimulationSet l_oStimulationSet;
 				int l = l_oStimulationSet.getStimulationCount();
 				
 				//TODO: uncomment this:
-				int p = m_ui64SampleCount-m_vPendingBuffer.size()+l_rInfo.m_ui64SignalSampleCountToSkip;
-
+				int p= m_ui64SampleCount-m_vPendingBuffer.size()+l_rInfo.m_ui64SignalSampleCountToSkip;
 				if (p<0)
-				{
 					m_rKernelContext.getLogManager() << LogLevel_Error << "Signed number used for bit oeprations:" << p << "\n";
-				}
 
 				//l_rInfo.m_ui64SignalSampleCountToSkip = 0;
 
@@ -556,14 +560,29 @@ boolean CAcquisitionServer::loop(void)
 					m_oPendingStimulationSet,
 					start,end);
 
-				//added by Anton
+				//m_rKernelContext.getLogManager() << LogLevel_Info << "start: " << time64(start) << "end: " << time64(end) << "\n";
+
+				//added by anton
+				//adding stumulations from external application
+
+				//m_rKernelContext.getLogManager() << LogLevel_Error << "popay:" << p << "\n";
 				if (m_bIsExternalTriggerEnabled)
 				{
-					acquireExternalStimulations(&l_oStimulationSet,m_rKernelContext.getLogManager(),start,end);
+				   //m_rKernelContext.getLogManager() << LogLevel_Error << "Checking for external stimulations:" << p << "\n";
+				   addExternalStimulations(&l_oStimulationSet,m_rKernelContext.getLogManager(),start,end);
+				}
+
+                //for debug only
+				for(int p=0;p<l_oStimulationSet.getStimulationCount();p++)
+				{
+					if (l_oStimulationSet.getStimulationIdentifier(p) >= OVTK_StimulationId_Label_00 && l_oStimulationSet.getStimulationIdentifier(p) <= OVTK_StimulationId_Label_10)
+					{
+				        total_before_leaving_ac++;
+					}
 				}
 				
 				OpenViBEToolkit::Tools::StimulationSet::copy(*ip_pStimulationSet, l_oStimulationSet, -int64(l_rInfo.m_ui64StimulationTimeOffset));
-				
+
 				//end of simulation buffer
 
 				op_pEncodedMemoryBuffer->setSize(0, true);
@@ -603,6 +622,7 @@ boolean CAcquisitionServer::connect(IDriver& rDriver, IHeader& rHeaderCopy, uint
 {
 	m_rKernelContext.getLogManager() << LogLevel_Debug << "connect\n";
 
+	m_i64InnerLatencySampleCount=0;
 	m_pDriver=&rDriver;
 	m_ui32SampleCountPerSentBlock=ui32SamplingCountPerSentBlock;
 
@@ -716,6 +736,7 @@ boolean CAcquisitionServer::connect(IDriver& rDriver, IHeader& rHeaderCopy, uint
 	}
 
 	m_pConnectionServerHandlerBoostThread=new boost::thread(CConnectionServerHandlerThread(*this, *m_pConnectionServer));
+	//applyPriority(m_pConnectionServerHandlerBoostThread,15);
 
 	IHeader::copy(rHeaderCopy, l_rHeader);
 	return true;
@@ -735,8 +756,17 @@ boolean CAcquisitionServer::start(void)
 		return false;
 	}
 	// m_pDriverContext->onStart(*m_pDriver->getHeader());
-    ftime(&m_CTStartTime); //anton
+
+	//software tagging
 	
+	if (m_bIsExternalTriggerEnabled)
+	{
+		ftime(&m_CTStartTime); //anton
+		m_bIsESThreadRunning = true;
+		m_ESthreadPtr.reset(new boost::thread( boost::bind(&CAcquisitionServer::readExternalStimulations , this )));
+		m_rKernelContext.getLogManager() << LogLevel_Info << "Software tagging activated...\n";
+	}
+
 	m_rKernelContext.getLogManager() << LogLevel_Info << "Now acquiring...\n";
 
 	m_vPendingBuffer.clear();
@@ -750,9 +780,19 @@ boolean CAcquisitionServer::start(void)
 	m_i64DriftCorrectionSampleCountAdded=0;
 	m_i64DriftCorrectionSampleCountRemoved=0;
 	m_bDriftCorrectionCalled=false;
-	m_ui64StartTime=System::Time::zgetTime(); //start time
-
+	m_ui64StartTime=System::Time::zgetTime();
 	m_ui64LastDeliveryTime=m_ui64StartTime;
+
+/*UNUSED debug variables for software tagging
+	stim_sent=0;
+	total_before_leaving_ac = 0; //anton
+	current_read_flashes_ipc = 0;
+	m_i32FlashesLost = 0; //anton
+	stimulations_earlier = 0;
+	stimulations_late = 0;
+	stimulations_wrong_size = 0;
+	stimulations_buffered = 0;
+*/
 
 	m_bStarted=true;
 	return true;
@@ -802,6 +842,14 @@ boolean CAcquisitionServer::stop(void)
 	m_pDriver->stop();
 	// m_pDriverContext->onStop(*m_pDriver->getHeader());
 
+    //added specifically for external stimulations support
+	if (m_bIsExternalTriggerEnabled)
+	{
+	    m_bIsESThreadRunning = false;
+		m_ESthreadPtr->join();
+	}
+	
+
 	list < pair < Socket::IConnection*, SConnectionInfo > >::iterator itConnection=m_vConnection.begin();
 	while(itConnection!=m_vConnection.end())
 	{
@@ -816,8 +864,31 @@ boolean CAcquisitionServer::stop(void)
 
 		itConnection=m_vConnection.erase(itConnection);
 	}
-	
+
+	//anton
+	m_rKernelContext.getLogManager() << LogLevel_Warning << "  Added external ones just before forwarding data: " << total_before_leaving_ac << "\n";
+
 	m_bStarted=false;
+
+	//software tagging diagnosting
+	m_rKernelContext.getLogManager() << LogLevel_Warning << "  Total external ones received through IPC: " << current_read_flashes_ipc << "\n";
+	m_rKernelContext.getLogManager() << LogLevel_Warning << "  Sent to Designer: " << stim_sent << "\n";
+	m_rKernelContext.getLogManager() << LogLevel_Warning << "  Lost because of invalid timestamp: " << m_i32FlashesLost << "\n";
+	m_rKernelContext.getLogManager() << LogLevel_Warning << "  Stimulations that came earlier: " << stimulations_earlier << "\n";
+	m_rKernelContext.getLogManager() << LogLevel_Warning << "  Stimulations that came later: " << 	stimulations_late << "\n";
+	m_rKernelContext.getLogManager() << LogLevel_Warning << "  Stimulations that had wrong size: " << 	stimulations_wrong_size << "\n";
+	m_rKernelContext.getLogManager() << LogLevel_Warning << "  Buffered: " << 	stimulations_buffered << "\n";
+
+	int processed=0;
+	vector<SExtStim>::iterator cii;
+	for(cii=m_vExternalStimulations.begin(); cii!=m_vExternalStimulations.end(); cii++)
+	{
+		if (cii->processed)
+	             processed++;
+	}
+	m_rKernelContext.getLogManager() << LogLevel_Warning << "  processed: " << 	processed << "\n";
+	//end software tagging diagnosting
+
 	return true;
 }
 
@@ -859,6 +930,20 @@ boolean CAcquisitionServer::disconnect(void)
 
 void CAcquisitionServer::setSamples(const float32* pSample)
 {
+	////Anton
+	if (pSample==NULL) m_rKernelContext.getLogManager() << LogLevel_Warning << "Null data detected\n";
+	//if (pSample==NULL && m_bIsExternalTriggerEnabled)
+	//{
+	//	//peform reference point fix
+
+	//	uint64 adjustment_time = (m_ui32SampleCountPerSentBlock / m_ui32SamplingFrequency) * 1000; 
+	//	uint64 ct_start_time_ms = (m_CTStartTime.time * 1000 + m_CTStartTime.millitm);
+	//	ct_start_time_ms -= adjustment_time;
+
+	//	m_CTStartTime.time = ct_start_time_ms / 1000;
+	//	m_CTStartTime.millitm = ct_start_time_ms % 1000;
+	//}
+	//else //anton
 	this->setSamples(pSample, m_ui32SampleCountPerSentBlock);
 }
 
@@ -876,12 +961,11 @@ void CAcquisitionServer::setSamples(const float32* pSample, const uint32 ui32Sam
 			for(uint32 k=0; k<m_ui64OverSamplingFactor; k++)
 			{
 				float32 alpha=float32(k+1)/m_ui64OverSamplingFactor;
-				
 				for(uint32 j=0; j<m_ui32ChannelCount; j++)
 				{
 #ifdef OVAS_OS_Windows
 					if(_isnan(pSample[j*ui32SampleCount+i]) || !_finite(pSample[j*ui32SampleCount+i])) // NaN or infinite values
-#else 
+#else
 					if(isnan(pSample[j*ui32SampleCount+i]) || !finite(pSample[j*ui32SampleCount+i])) // NaN or infinite values
 #endif
 					{
@@ -893,17 +977,17 @@ void CAcquisitionServer::setSamples(const float32* pSample, const uint32 ui32Sam
 
 						switch(m_eNaNReplacementPolicy)
 						{
-						case NaNReplacementPolicy_Disabled:
-							m_vSwapBuffer[j] = std::numeric_limits<float>::quiet_NaN();
-							break;
-						case NaNReplacementPolicy_Zero:
-							m_vSwapBuffer[j] = 0;
-							break;
-						case NaNReplacementPolicy_LastCorrectValue:
-							// we simply don't update the value
-							break;
-						default:
-							break;
+							case NaNReplacementPolicy_Disabled:
+								m_vSwapBuffer[j] = std::numeric_limits<float>::quiet_NaN();
+								break;
+							case NaNReplacementPolicy_Zero:
+								m_vSwapBuffer[j] = 0;
+								break;
+							case NaNReplacementPolicy_LastCorrectValue:
+								// we simply don't update the value
+								break;
+							default:
+								break;
 						}
 					}
 					else
@@ -911,38 +995,31 @@ void CAcquisitionServer::setSamples(const float32* pSample, const uint32 ui32Sam
 						if(m_bReplacementInProgress)
 						{
 							m_oPendingStimulationSet.appendStimulation(OVTK_GDF_Correct, ((m_ui64SampleCount + j*ui32SampleCount+i -1) << 32) / m_ui32SamplingFrequency, 0);
-							m_bReplacementInProgress = false;	
+							m_bReplacementInProgress = false;
 						}
 						m_vSwapBuffer[j]=alpha*pSample[j*ui32SampleCount+i]+(1-alpha)*m_vOverSamplingSwapBuffer[j];
 					}
 				}
-
-
 				m_vPendingBuffer.push_back(m_vSwapBuffer);
 			}
 		}
-
 		m_ui64LastSampleCount=m_ui64SampleCount;
 		m_ui64SampleCount+=ui32SampleCount*m_ui64OverSamplingFactor;
 
 		{
 			uint64 l_ui64TheoricalSampleCount=(m_ui32SamplingFrequency * (System::Time::zgetTime()-m_ui64StartTime))>>32;
-			int64 l_i64JitterSampleCount=int64(m_ui64SampleCount-l_ui64TheoricalSampleCount);
+			int64 l_i64JitterSampleCount=int64(m_ui64SampleCount-l_ui64TheoricalSampleCount)+m_i64InnerLatencySampleCount;
 
 			m_vJitterSampleCount.push_back(l_i64JitterSampleCount);
-			
 			if(m_vJitterSampleCount.size() > m_ui64JitterEstimationCountForDrift)
 			{
 				m_vJitterSampleCount.pop_front();
 			}
-			
 			m_i64DriftSampleCount=0;
-
 			for(list<int64>::iterator j=m_vJitterSampleCount.begin(); j!=m_vJitterSampleCount.end(); j++)
 			{
 				m_i64DriftSampleCount+=*j;
 			}
-
 			m_f64DriftSampleCount=m_i64DriftSampleCount/float64(m_vJitterSampleCount.size());
 			m_i64DriftSampleCount/=int64(m_vJitterSampleCount.size());
 
@@ -970,26 +1047,6 @@ void CAcquisitionServer::setStimulationSet(const IStimulationSet& rStimulationSe
 	}
 }
 
-int64 CAcquisitionServer::getSuggestedDriftCorrectionSampleCount(void) const
-{
-	if(m_eDriftCorrectionPolicy == DriftCorrectionPolicy_Disabled)
-	{
-		return 0;
-	}
-
-	if(this->getDriftSampleCount() >= this->getDriftToleranceSampleCount())
-	{
-		return -this->getDriftSampleCount();
-	}
-
-	if(this->getDriftSampleCount() <= -this->getDriftToleranceSampleCount())
-	{
-		return -this->getDriftSampleCount();
-	}
-
-	return 0;
-}
-
 boolean CAcquisitionServer::correctDriftSampleCount(int64 i64SampleCount)
 {
 	if(!m_bStarted)
@@ -1011,15 +1068,10 @@ boolean CAcquisitionServer::correctDriftSampleCount(int64 i64SampleCount)
 		}
 
 		char l_sTime[1024];
-		
 		uint64 l_ui64Time=System::Time::zgetTime()-m_ui64StartTime;
-		
 		float64 l_f64Time=(l_ui64Time>>22)/1024.;
-		
 		::sprintf(l_sTime, "%.03lf", l_f64Time);
-		
 		m_rKernelContext.getLogManager() << LogLevel_Trace << "At time " << CString(l_sTime) << " : Correcting drift by " << i64SampleCount << " samples\n";
-		
 		if(i64SampleCount > 0)
 		{
 			for(int64 i=0; i<i64SampleCount; i++)
@@ -1049,7 +1101,6 @@ boolean CAcquisitionServer::correctDriftSampleCount(int64 i64SampleCount)
 #if 0
 			OpenViBEToolkit::Tools::StimulationSet::removeRange(m_oPendingStimulationSet, ((m_ui64SampleCount-l_ui64SamplesToRemove)<<32)/m_ui32SamplingFrequency, (m_ui64SampleCount<<32)/m_ui32SamplingFrequency);
 #else
-			//correct simulation date 
 			uint64 l_ui64LastSampleDate=((m_ui64SampleCount-l_ui64SamplesToRemove)<<32)/m_ui32SamplingFrequency;
 			for(uint32 i=0; i<m_oPendingStimulationSet.getStimulationCount(); i++)
 			{
@@ -1062,10 +1113,8 @@ boolean CAcquisitionServer::correctDriftSampleCount(int64 i64SampleCount)
 
 			m_f64DriftSampleCount-=l_ui64SamplesToRemove;
 			m_i64DriftSampleCount-=l_ui64SamplesToRemove;
-
 			m_ui64LastSampleCount=m_ui64SampleCount;
 			m_ui64SampleCount-=l_ui64SamplesToRemove;
-			
 			m_i64DriftCorrectionSampleCountRemoved+=l_ui64SamplesToRemove;
 		}
 
@@ -1076,6 +1125,37 @@ boolean CAcquisitionServer::correctDriftSampleCount(int64 i64SampleCount)
 	}
 
 	return true;
+}
+
+int64 CAcquisitionServer::getSuggestedDriftCorrectionSampleCount(void) const
+{
+	if(m_eDriftCorrectionPolicy == DriftCorrectionPolicy_Disabled)
+	{
+		return 0;
+	}
+
+	if(this->getDriftSampleCount() >= this->getDriftToleranceSampleCount())
+	{
+		return -this->getDriftSampleCount();
+	}
+
+	if(this->getDriftSampleCount() <= -this->getDriftToleranceSampleCount())
+	{
+		return -this->getDriftSampleCount();
+	}
+
+	return 0;
+}
+
+boolean CAcquisitionServer::setInnerLatencySampleCount(OpenViBE::int64 i64SampleCount)
+{
+	m_i64InnerLatencySampleCount=i64SampleCount;
+	return true;
+}
+
+int64 CAcquisitionServer::getInnerLatencySampleCount(void) const
+{
+	return m_i64InnerLatencySampleCount;
 }
 
 boolean CAcquisitionServer::updateImpedance(const uint32 ui32ChannelIndex, const float64 f64Impedance)
@@ -1090,6 +1170,7 @@ boolean CAcquisitionServer::updateImpedance(const uint32 ui32ChannelIndex, const
 
 // ____________________________________________________________________________
 //
+
 ENaNReplacementPolicy CAcquisitionServer::getNaNReplacementPolicy(void)
 {
 	return m_eNaNReplacementPolicy;
@@ -1105,14 +1186,14 @@ CString CAcquisitionServer::getNaNReplacementPolicyStr(void)
 {
 	switch (m_eNaNReplacementPolicy)
 	{
-	case NaNReplacementPolicy_Disabled:
-		return CString("Disabled");
-	case NaNReplacementPolicy_LastCorrectValue:
-		return CString("LastCorrectValue");
-	case NaNReplacementPolicy_Zero:
-		return CString("Zero");
-	default :
-		return CString("N/A");
+		case NaNReplacementPolicy_Disabled:
+			return CString("Disabled");
+		case NaNReplacementPolicy_LastCorrectValue:
+			return CString("LastCorrectValue");
+		case NaNReplacementPolicy_Zero:
+			return CString("Zero");
+		default :
+			return CString("N/A");
 	}
 }
 
@@ -1121,14 +1202,14 @@ CString CAcquisitionServer::getDriftCorrectionPolicyStr(void)
 {
 	switch (m_eDriftCorrectionPolicy)
 	{
-	case DriftCorrectionPolicy_Disabled:
-		return CString("Disabled");
-	case DriftCorrectionPolicy_DriverChoice:
-		return CString("DriverChoice");
-	case DriftCorrectionPolicy_Forced:
-		return CString("Forced");
-	default :
-		return CString("N/A");
+		case DriftCorrectionPolicy_Disabled:
+			return CString("Disabled");
+		case DriftCorrectionPolicy_DriverChoice:
+			return CString("DriverChoice");
+		case DriftCorrectionPolicy_Forced:
+			return CString("Forced");
+		default :
+			return CString("N/A");
 	}
 }
 
@@ -1164,12 +1245,6 @@ boolean CAcquisitionServer::isImpedanceCheckRequested(void)
 	return m_bIsImpedanceCheckRequested;
 }
 
-boolean CAcquisitionServer::isExternalTriggersEnabled(void)
-{
-	return m_bIsExternalTriggerEnabled;
-}
-
-
 boolean CAcquisitionServer::setDriftToleranceDuration(uint64 ui64DriftToleranceDuration)
 {
 	m_ui64DriftToleranceDuration=ui64DriftToleranceDuration;
@@ -1195,13 +1270,6 @@ boolean CAcquisitionServer::setImpedanceCheckRequest(boolean bActive)
 	m_bIsImpedanceCheckRequested=bActive;
 	return true;
 }
-
-boolean CAcquisitionServer::setExternalTriggersEnabled(boolean bActive)
-{
-	m_bIsExternalTriggerEnabled=bActive;
-	return true;
-}
-
 
 // ____________________________________________________________________________
 //
@@ -1232,106 +1300,203 @@ boolean CAcquisitionServer::acceptNewConnection(Socket::IConnection* pConnection
 	return true;
 }
 
-//new method by Anton
-void CAcquisitionServer::acquireExternalStimulations(OpenViBE::CStimulationSet* ss, OpenViBE::Kernel::ILogManager& logm,uint64 start,uint64 end)
+void CAcquisitionServer::readExternalStimulations()
 {
 	using namespace boost::interprocess;
-	static int stim_index=0;
 
-	const char* mq_name="clinet_to_ov";
-	uint64 duration_ms = 40; 
-	
-	//adjustable communication parameters
-	//total time per read is read_tries * timeout_ms
-	int timeout_ms = 30;
-	int read_tries = 5;
-	
-	//adjustable protocol parameters
+	const char* mq_name="client_to_ov";
 	const int chunk_length=3;
+	const int pause_time=5;
 
-	try
+	unsigned int priority;
+	size_t recvd_size;
+
+	uint64 chunk[chunk_length];
+
+	while (m_bIsESThreadRunning)
 	{
-      //Open a message queue.
-      message_queue mq
-         (open_only  //only open
-         ,mq_name    //name
-         );
+		bool success = false;
+		try
+		{
+			//Open a message queue.
+			message_queue mq
+					(open_only  //only open
+					 ,mq_name    //name
+					 );
 
-      unsigned int priority;
-      size_t recvd_size;
-	  
-	  uint64 chunk[chunk_length];
+			success = mq.try_receive(&chunk, sizeof(chunk), recvd_size, priority);
+		}
+		catch(interprocess_exception &ex)
+		{
+			//m_bIsESThreadRunning = false;
+			//m_rKernelContext.getLogManager() << LogLevel_Error << "Problem with message queue in external stimulations:" << ex.what() << "\n";
+			boost::this_thread::sleep(boost::posix_time::milliseconds(pause_time));
+			continue;
+		}
 
-	  int i=0;
-	  bool received=true;
-	  int current_read_flashes = 0;
-	  boost::posix_time::ptime timeout = boost::posix_time::ptime(boost::posix_time::second_clock::universal_time()) + boost::posix_time::milliseconds(timeout_ms);
+		if (!success)
+		{
+			boost::this_thread::sleep(boost::posix_time::milliseconds(pause_time));
+			continue;
+		}
 
-      while (received && i < read_tries)
-	  {  
-		 received = mq.timed_receive(&chunk, sizeof(chunk), recvd_size, priority, timeout);
-         
-		 if (received)
-		 {
-			 current_read_flashes++;
+		current_read_flashes_ipc++;
 
-			 if(recvd_size != sizeof(chunk))
-			 {  
-				 logm << LogLevel_Error << "Problem with type of received data when reqding external stimulation!\n";
-			 }
-			 else
-			 {
-				 SExtStim stim;
+		if(recvd_size != sizeof(chunk))
+		{
+			//m_rKernelContext.getLogManager() << LogLevel_Error << "Problem with type of received data when reqding external stimulation!\n";
+			stimulations_wrong_size++;
+		}
+		else
+		{
+			//m_rKernelContext.getLogManager() << LogLevel_Warning << "received\n";
 
-				 stim.identifier = chunk [1];
-				 uint64 received_time = chunk [2]; 
+			SExtStim stim;
 
-				 //1. calculate time
-				 uint64 ct_start_time_ms = (m_CTStartTime.time * 1000 + m_CTStartTime.millitm);
-				 
-				 int64 time_test = received_time - ct_start_time_ms;
+			stim.identifier = chunk[1];
+			uint64 received_time = chunk[2];
 
-				 if (time_test<0)
-				 {
-					m_i32FlashesLost++;
-                    logm << LogLevel_Warning <<  "AS: external stimulation time is invalid, probably stimulation is before reference point, total invalid so far: " << m_i32FlashesLost << "\n";
-					continue; //we skip this stimulation
-				 }
-				 //2. Convert to OpenVibe time
-				 uint64 ct_event_time = received_time - ct_start_time_ms;
+			//1. calculate time
+			uint64 ct_start_time_ms = (m_CTStartTime.time * 1000 + m_CTStartTime.millitm);
 
-				 float64 time = (float64)ct_event_time / (float64)1000;
+			int64 time_test = received_time - ct_start_time_ms;
 
-				 uint64 ov_time = (uint64)(time * 1024)<<22;  
-				 stim.timestamp = ov_time;
-
-				 //3. Add to external stimulations buffer 
-				 m_vExternalStimulations.push_back(stim);
-			 }
-		 }
-
-		 i++;
-      }
-
-	  vector<SExtStim>::const_iterator cii;
-
-	  //int flashes_in_this_time_chunk=0;
-	  //uint64 identifier = OVTK_StimulationId_Label_09;
-
-	  for(cii=m_vExternalStimulations.begin(); cii!=m_vExternalStimulations.end(); cii++)
-	  {
-			if ((*cii).timestamp >= start && (*cii).timestamp < end)
-			{ 
-				//flashes_in_this_time_chunk++;
-				ss->appendStimulation((*cii).identifier, (*cii).timestamp, duration_ms);
-				stim_index++;
+			if (time_test<0)
+			{
+				m_i32FlashesLost++;
+				//m_rKernelContext.getLogManager() << LogLevel_Warning <<  "AS: external stimulation time is invalid, probably stimulation is before reference point, total invalid so far: " << m_i32FlashesLost << "\n";
+				boost::this_thread::sleep(boost::posix_time::milliseconds(pause_time));
+				continue; //we skip this stimulation
 			}
-	   }
-   }
-   
-   catch(interprocess_exception &ex)
-   {
-	  logm << LogLevel_Debug << "Problem with message queue in external stimulations:" << ex.what() << "\n";
-   }
+			//2. Convert to OpenVibe time
+			uint64 ct_event_time = received_time - ct_start_time_ms;
+
+			float64 time = (float64)ct_event_time / (float64)1000;
+
+			uint64 ov_time = (uint64)(time * 1024)<<22;
+			stim.timestamp = ov_time;
+
+			stim.alreadyCountedAsEarlier = false;
+
+			//3. Store, the main thread will process it
+			{
+				//lock
+				boost::mutex::scoped_lock lock(m_es_mutex);
+
+				m_vExternalStimulations.push_back(stim);
+				stimulations_buffered++;
+				m_esAvailable.notify_one();
+				//unlock
+			}
+
+			boost::this_thread::sleep(boost::posix_time::milliseconds(pause_time));
+
+		}
+	}
 }
+
+void CAcquisitionServer::addExternalStimulations(OpenViBE::CStimulationSet* ss, OpenViBE::Kernel::ILogManager& logm,uint64 start,uint64 end)
+{
+	uint64 duration_ms = 40;
+	{
+		//lock
+		boost::mutex::scoped_lock lock(m_es_mutex);
+
+		vector<SExtStim>::iterator cii;
+
+		for(cii=m_vExternalStimulations.begin(); cii!=m_vExternalStimulations.end(); cii++)
+		{
+			if (cii->processed==true) continue;
+
+			// if time matches current chunk being processed - send it
+			if (cii->timestamp >= start && cii->timestamp < end)
+			{
+				//flashes_in_this_time_chunk++;
+				//logm << LogLevel_Error << "Stimulation added." << "\n";
+				ss->appendStimulation(cii->identifier, cii->timestamp, duration_ms);
+				stim_sent++;
+				//m_vExternalStimulations.erase(cii);
+				cii->processed = true;
+			}
+			else
+				//the stimulation is coming too late - after the current block being processed
+				//we correct the timestamp to the current block and we send it
+				if (cii->timestamp < start)
+				{
+					/*uint64 l_ui64Time=start-cii->timestamp;
+					float64 l_f64Time=(l_ui64Time>>22)/1024.;*/
+					/*char l_sTime[1024];
+					::sprintf(l_sTime, "%.03lf", l_f64Time);
+					m_rKernelContext.getLogManager() << LogLevel_Error << "difference:" << CString(l_sTime) << "\n";*/
+					//if (l_f64Time*1000 > 300) //ignore very old stimulations
+					//{
+					//	cii->processed = true;
+					//	continue;
+					//   }
+
+					stimulations_late++;
+					ss->appendStimulation(cii->identifier, start, duration_ms);
+					stim_sent++;
+					//m_vExternalStimulations.erase(cii);
+					cii->processed = true;
+				}
+				else //stim.timestamp > end - coming before the currently processed block, so we still can put in the right place
+				{
+					//save the stimulation for later
+					if (!cii->alreadyCountedAsEarlier)
+					{
+						stimulations_earlier++;
+						cii->alreadyCountedAsEarlier = true;
+					}
+					continue;
+				}
+		}
+
+		m_esAvailable.notify_one();
+		//unlock
+	}
+}
+
+#if 0
+UNUSED
+//#include <windows.h>
+void CAcquisitionServer::applyPriority(boost::thread* thread, int priority)
+{
+
+#ifdef WIN32
+
+
+    /*if (!thread)
+        return;
+
+    BOOL res;
+    HANDLE th = thread->native_handle();
+
+    switch (priority)
+    {
+		case THREAD_PRIORITY_TIME_CRITICAL               : res = SetThreadPriority(th, THREAD_PRIORITY_TIME_CRITICAL);   break;
+		case THREAD_PRIORITY_HIGHEST                   : res = SetThreadPriority(th, THREAD_PRIORITY_HIGHEST);                 break;
+		case THREAD_PRIORITY_ABOVE_NORMAL   : res = SetThreadPriority(th, THREAD_PRIORITY_ABOVE_NORMAL);    break;
+		case THREAD_PRIORITY_NORMAL                 : res = SetThreadPriority(th, THREAD_PRIORITY_NORMAL);                  break;
+		case THREAD_PRIORITY_BELOW_NORMAL   : res = SetThreadPriority(th, THREAD_PRIORITY_BELOW_NORMAL);    break;
+		case THREAD_PRIORITY_LOWEST                   : res = SetThreadPriority(th, THREAD_PRIORITY_LOWEST);                  break;
+    }*/
+
+#endif
+
+//for linux - the same - you get native nadle - you set the priority
+}
+#endif
+
+OpenViBE::boolean CAcquisitionServer::setExternalTriggersEnabled(boolean bActive)
+{
+	m_bIsExternalTriggerEnabled=bActive;
+	return true;
+}
+
+OpenViBE::boolean CAcquisitionServer::isExternalTriggersEnabled(void)
+{
+	return m_bIsExternalTriggerEnabled;
+}
+
 

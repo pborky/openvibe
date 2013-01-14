@@ -2,10 +2,13 @@
 #include "ovasCAcquisitionServerThread.h"
 #include "ovasCAcquisitionServer.h"
 
+#include "field-trip-protocol/ovasCDriverFieldtrip.h"
 #include "generic-oscilator/ovasCDriverGenericOscilator.h"
 #include "generic-sawtooth/ovasCDriverGenericSawTooth.h"
 #include "generic-raw-reader/ovasCDriverGenericRawFileReader.h"
 #include "generic-raw-reader/ovasCDriverGenericRawTelnetReader.h"
+#include "brainmaster-discovery/ovasCDriverBrainmasterDiscovery.h"
+#include "brainproducts-actichamp/ovasCDriverBrainProductsActiCHamp.h"
 #include "brainproducts-brainampseries/ovasCDriverBrainProductsBrainampSeries.h"
 #include "brainproducts-brainvisionrecorder/ovasCDriverBrainProductsBrainVisionRecorder.h"
 #include "brainproducts-vamp/ovasCDriverBrainProductsVAmp.h"
@@ -22,7 +25,7 @@
 // #include "neuroscan-synamps2/ovasCDriverNeuroscanSynamps2.h"
 #include "openal-mono16bit-audiocapture/ovasCDriverOpenALAudioCapture.h"
 
-#include <openvibe-toolkit/ovtk_all.h>
+#include "mitsarEEG202A/ovasCDriverMitsarEEG202A.h"
 
 #include <system/Memory.h>
 #include <system/Time.h>
@@ -122,7 +125,15 @@ CAcquisitionServerGUI::CAcquisitionServerGUI(const IKernelContext& rKernelContex
 	m_vDriver.push_back(new CDriverGenericSawTooth(m_pAcquisitionServer->getDriverContext()));
 	m_vDriver.push_back(new CDriverGenericRawFileReader(m_pAcquisitionServer->getDriverContext()));
 	m_vDriver.push_back(new CDriverGenericRawTelnetReader(m_pAcquisitionServer->getDriverContext()));
+	m_vDriver.push_back(new CDriverFieldtrip(m_pAcquisitionServer->getDriverContext()));
 #if defined OVAS_OS_Windows
+	m_vDriver.push_back(new CDriverMitsarEEG202A(m_pAcquisitionServer->getDriverContext()));
+#if defined TARGET_HAS_ThirdPartyBrainmasterCodeMakerAPI
+	m_vDriver.push_back(new CDriverBrainmasterDiscovery(m_pAcquisitionServer->getDriverContext()));
+#endif
+#if defined TARGET_HAS_ThirdPartyActiCHampAPI
+	m_vDriver.push_back(new CDriverBrainProductsActiCHamp(m_pAcquisitionServer->getDriverContext()));
+#endif
 	m_vDriver.push_back(new CDriverBrainProductsBrainampSeries(m_pAcquisitionServer->getDriverContext()));
 #endif
 	m_vDriver.push_back(new CDriverBrainProductsBrainVisionRecorder(m_pAcquisitionServer->getDriverContext()));
@@ -183,11 +194,10 @@ CAcquisitionServerGUI::~CAcquisitionServerGUI(void)
 		::fprintf(l_pFile, "AcquisitionServer_LastConnectionPort = %i\n", this->getTCPPort());
 		::fprintf(l_pFile, "# Last Preferences set in the acquisition server\n");
 		::fprintf(l_pFile, "AcquisitionServer_DriftCorrectionPolicy = %s\n", m_pAcquisitionServer->getDriftCorrectionPolicyStr().toASCIIString());
-		::fprintf(l_pFile, "AcquisitionServer_JitterEstimationCountForDrift = %i\n", m_pAcquisitionServer->getJitterEstimationCountForDrift());
-		::fprintf(l_pFile, "AcquisitionServer_DriftToleranceDuration = %i\n", m_pAcquisitionServer->getDriftToleranceDuration());
-		::fprintf(l_pFile, "AcquisitionServer_OverSamplingFactor = %i\n", m_pAcquisitionServer->getOversamplingFactor());
+		::fprintf(l_pFile, "AcquisitionServer_JitterEstimationCountForDrift = %llu\n", m_pAcquisitionServer->getJitterEstimationCountForDrift());
+		::fprintf(l_pFile, "AcquisitionServer_DriftToleranceDuration = %llu\n", m_pAcquisitionServer->getDriftToleranceDuration());
+		::fprintf(l_pFile, "AcquisitionServer_OverSamplingFactor = %llu\n", m_pAcquisitionServer->getOversamplingFactor());
 		::fprintf(l_pFile, "AcquisitionServer_CheckImpedance = %s\n", (m_pAcquisitionServer->isImpedanceCheckRequested() ? "True" : "False"));
-		::fprintf(l_pFile, "AcquisitionServer_ExternalTriggers = %s\n", (m_pAcquisitionServer->isExternalTriggersEnabled() ? "True" : "False"));
 		::fprintf(l_pFile, "AcquisitionServer_NaNReplacementPolicy = %s\n", m_pAcquisitionServer->getNaNReplacementPolicyStr().toASCIIString());
 		::fprintf(l_pFile, "# Path to emotiv SDK\n");
 		::fprintf(l_pFile, "AcquisitionServer_PathToEmotivResearchSDK = %s\n", (const char *)m_rKernelContext.getConfigurationManager().expand("${AcquisitionServer_PathToEmotivResearchSDK}"));
@@ -404,7 +414,8 @@ void CAcquisitionServerGUI::setImpedance(OpenViBE::uint32 ui32ChannelIndex, Open
 	{
 		if(f64Impedance>=0)
 		{
-			float64 l_dFraction=(f64Impedance*.001/20);
+			//float64 l_dFraction=(f64Impedance*.001/20); With fixed impedance limit, 20kOhm max / 25%=5kOhm to be good
+			float64 l_dFraction=(f64Impedance / (m_rKernelContext.getConfigurationManager().expandAsFloat("${AcquisitionServer_DefaultImpedanceLimit}",5000) * 4));
 			if(l_dFraction>1) l_dFraction=1;
 
 			char l_sMessage[1024];
@@ -610,6 +621,8 @@ void CAcquisitionServerGUI::buttonPreferencePressedCB(::GtkButton* pButton)
 	::GtkSpinButton* l_pJitterMeasureCount=GTK_SPIN_BUTTON(::gtk_builder_get_object(l_pInterface, "spinbutton_jitter_measure_count"));
 	::GtkSpinButton* l_pOverSamplingFactor=GTK_SPIN_BUTTON(::gtk_builder_get_object(l_pInterface, "spinbutton_oversampling_factor"));
 	::GtkToggleButton* l_pImpedanceCheck=GTK_TOGGLE_BUTTON(::gtk_builder_get_object(l_pInterface, "checkbutton_impedance"));
+
+	//gipsa
 	::GtkToggleButton* l_pExternalTriggers=GTK_TOGGLE_BUTTON(::gtk_builder_get_object(l_pInterface, "checkbutton_external_triggers"));
 
 	::gtk_combo_box_set_active(l_pDriftCorrectionPolicy, (int)m_pAcquisitionServer->getDriftCorrectionPolicy());
@@ -618,9 +631,10 @@ void CAcquisitionServerGUI::buttonPreferencePressedCB(::GtkButton* pButton)
 	::gtk_spin_button_set_value(l_pOverSamplingFactor, m_pAcquisitionServer->getOversamplingFactor());
 	::gtk_toggle_button_set_active(l_pImpedanceCheck, m_pAcquisitionServer->isImpedanceCheckRequested()?TRUE:FALSE);
 	::gtk_combo_box_set_active(l_pNaNReplacementPolicy, (int)m_pAcquisitionServer->getNaNReplacementPolicy());
+
+	//gipsa
 	::gtk_toggle_button_set_active(l_pExternalTriggers, m_pAcquisitionServer->isExternalTriggersEnabled()?TRUE:FALSE);
-
-
+	
 	gint l_iResponseId=::gtk_dialog_run(l_pDialog);
 	switch(l_iResponseId)
 	{
