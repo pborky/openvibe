@@ -18,7 +18,6 @@
 
 #include <sys/timeb.h>
 
-#include "ExtStim.h"
 
 namespace OpenViBEAcquisitionServer
 {
@@ -176,7 +175,7 @@ namespace OpenViBEAcquisitionServer
 
 	public: //anton 
 		
-		struct SExtStim 
+		struct SExternalStimulation
 		{
 			OpenViBE::uint64 timestamp;
 			OpenViBE::uint64 identifier;
@@ -191,33 +190,33 @@ namespace OpenViBEAcquisitionServer
 
 		struct timeb m_CTStartTime; //time when the acquisition process started in local computer time
 
-		std::vector < SExtStim > m_vExternalStimulations;
+		std::vector < SExternalStimulation > m_vExternalStimulations;
 
-		OpenViBE::boolean m_bIsExternalTriggerEnabled;
+		OpenViBE::boolean m_bIsExternalStimulationsEnabled;
+		OpenViBE::CString m_sExternalStimulationsQueueName;
 
-		OpenViBE::uint32 total_before_leaving_ac;
-		//OpenViBE::uint32 counter1;
-		//OpenViBE::uint32 counter2;
-		//OpenViBE::uint32 counter3;
-		//OpenViBE::uint32 totalDropped;
+		//Gipsa-only OpenViBE::uint32 total_before_leaving_ac;
+		//UNUSED OpenViBE::uint32 counter1;
+		//UNUSED OpenViBE::uint32 counter2;
+		//UNUSED OpenViBE::uint32 counter3;
+		//UNUSED OpenViBE::uint32 totalDropped;
 
 		//VRPNTagger* m_vprnTagger;
 
 //UNUSED		bool vrpn_enabled;
 //UNUSED		void applyPriority(boost::thread* thread, int priority);
 
-		OpenViBE::boolean setExternalTriggersEnabled(OpenViBE::boolean bActive);
-		OpenViBE::boolean isExternalTriggersEnabled(void);
+		OpenViBE::boolean setExternalStimulationsEnabled(OpenViBE::boolean bActive);
+		OpenViBE::boolean isExternalStimulationsEnabled(void);
 
-/*UNUSED Debug stuff
-		OpenViBE::uint32 m_i32FlashesLost;
-		int stim_sent;
-		int current_read_flashes_ipc;
-		int stimulations_earlier;
-		int stimulations_late;
-		int stimulations_wrong_size;
-		int stimulations_buffered;
-*/
+// Debugging
+		int m_iDebugStimulationsLost;
+		int m_iDebugExternalStimulationsSent;
+		int m_iDebugCurrentReadIPCStimulations;
+		int m_iDebugStimulationsReceivedEarlier;
+		int m_iDebugStimulationsReceivedLate;
+		int m_iDebugStimulationsReceivedWrongSize;
+		int m_iDebugStimulationsBuffered;
 
 		//added for acquiring external stimulations
 		boost::scoped_ptr<boost::thread> m_ESthreadPtr;

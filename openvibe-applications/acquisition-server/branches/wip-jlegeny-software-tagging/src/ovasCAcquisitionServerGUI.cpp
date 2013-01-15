@@ -199,6 +199,7 @@ CAcquisitionServerGUI::~CAcquisitionServerGUI(void)
 		::fprintf(l_pFile, "AcquisitionServer_OverSamplingFactor = %llu\n", m_pAcquisitionServer->getOversamplingFactor());
 		::fprintf(l_pFile, "AcquisitionServer_CheckImpedance = %s\n", (m_pAcquisitionServer->isImpedanceCheckRequested() ? "True" : "False"));
 		::fprintf(l_pFile, "AcquisitionServer_NaNReplacementPolicy = %s\n", m_pAcquisitionServer->getNaNReplacementPolicyStr().toASCIIString());
+		::fprintf(l_pFile, "AcquisitionServer_ExternalStimulations = %s\n", m_pAcquisitionServer->isExternalStimulationsEnabled() ? "True" : "False");
 		::fprintf(l_pFile, "# Path to emotiv SDK\n");
 		::fprintf(l_pFile, "AcquisitionServer_PathToEmotivResearchSDK = %s\n", (const char *)m_rKernelContext.getConfigurationManager().expand("${AcquisitionServer_PathToEmotivResearchSDK}"));
 		::fclose(l_pFile);
@@ -623,7 +624,7 @@ void CAcquisitionServerGUI::buttonPreferencePressedCB(::GtkButton* pButton)
 	::GtkToggleButton* l_pImpedanceCheck=GTK_TOGGLE_BUTTON(::gtk_builder_get_object(l_pInterface, "checkbutton_impedance"));
 
 	//gipsa
-	::GtkToggleButton* l_pExternalTriggers=GTK_TOGGLE_BUTTON(::gtk_builder_get_object(l_pInterface, "checkbutton_external_triggers"));
+	::GtkToggleButton* l_pExternalStimulations=GTK_TOGGLE_BUTTON(::gtk_builder_get_object(l_pInterface, "checkbutton_external_stimulations"));
 
 	::gtk_combo_box_set_active(l_pDriftCorrectionPolicy, (int)m_pAcquisitionServer->getDriftCorrectionPolicy());
 	::gtk_spin_button_set_value(l_pDriftTolerance, m_pAcquisitionServer->getDriftToleranceDuration());
@@ -633,7 +634,7 @@ void CAcquisitionServerGUI::buttonPreferencePressedCB(::GtkButton* pButton)
 	::gtk_combo_box_set_active(l_pNaNReplacementPolicy, (int)m_pAcquisitionServer->getNaNReplacementPolicy());
 
 	//gipsa
-	::gtk_toggle_button_set_active(l_pExternalTriggers, m_pAcquisitionServer->isExternalTriggersEnabled()?TRUE:FALSE);
+	::gtk_toggle_button_set_active(l_pExternalStimulations, m_pAcquisitionServer->isExternalStimulationsEnabled()?TRUE:FALSE);
 	
 	gint l_iResponseId=::gtk_dialog_run(l_pDialog);
 	switch(l_iResponseId)
@@ -647,7 +648,7 @@ void CAcquisitionServerGUI::buttonPreferencePressedCB(::GtkButton* pButton)
 			m_pAcquisitionServer->setJitterEstimationCountForDrift(::gtk_spin_button_get_value_as_int(l_pJitterMeasureCount));
 			m_pAcquisitionServer->setOversamplingFactor(::gtk_spin_button_get_value_as_int(l_pOverSamplingFactor));
 			m_pAcquisitionServer->setImpedanceCheckRequest(::gtk_toggle_button_get_active(l_pImpedanceCheck)?true:false);
-			m_pAcquisitionServer->setExternalTriggersEnabled(::gtk_toggle_button_get_active(l_pExternalTriggers)?true:false);
+			m_pAcquisitionServer->setExternalStimulationsEnabled(::gtk_toggle_button_get_active(l_pExternalStimulations)?true:false);
 			break;
 		case GTK_RESPONSE_CANCEL:
 		case GTK_RESPONSE_NO:

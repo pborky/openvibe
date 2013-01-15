@@ -766,10 +766,10 @@ Configuration </property>
               </packing>
             </child>
             <child>
-              <object class="GtkLabel" id="label_external_triggers">
+              <object class="GtkLabel" id="label_external_stimulations">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
-                <property name="label" translatable="yes">External Triggers</property>
+                <property name="label" translatable="yes">External Stimulations</property>
               </object>
               <packing>
                 <property name="top_attach">9</property>
@@ -777,7 +777,7 @@ Configuration </property>
               </packing>
             </child>
             <child>
-              <object class="GtkCheckButton" id="checkbutton_external_triggers">
+              <object class="GtkCheckButton" id="checkbutton_external_stimulations">
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">False</property>
