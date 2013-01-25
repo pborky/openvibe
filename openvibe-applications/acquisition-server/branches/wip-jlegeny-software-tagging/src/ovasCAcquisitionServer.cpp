@@ -16,10 +16,10 @@
 
 #include <cassert>
 
-#include <boost/interprocess/ipc/message_queue.hpp> //anton
+#include <boost/interprocess/ipc/message_queue.hpp> // #Gipsa
 
-#include <vector> //anton
-#include <ctime> //anton
+#include <vector> // #Gipsa
+#include <ctime> // #Gipsa
 #include <iostream>
 
 
@@ -545,9 +545,8 @@ boolean CAcquisitionServer::loop(void)
 				CStimulationSet l_oStimulationSet;
 //				int l = l_oStimulationSet.getStimulationCount();
 				
-				//TODO: uncomment this:
-				int p= m_ui64SampleCount-m_vPendingBuffer.size()+l_rInfo.m_ui64SignalSampleCountToSkip;
-				if (p<0)
+				int p = m_ui64SampleCount-m_vPendingBuffer.size()+l_rInfo.m_ui64SignalSampleCountToSkip;
+				if (p < 0)
 					m_rKernelContext.getLogManager() << LogLevel_Error << "Signed number used for bit oeprations:" << p << "\n";
 
 				//l_rInfo.m_ui64SignalSampleCountToSkip = 0;
@@ -562,30 +561,18 @@ boolean CAcquisitionServer::loop(void)
 
 				//m_rKernelContext.getLogManager() << LogLevel_Info << "start: " << time64(start) << "end: " << time64(end) << "\n";
 
-				//added by anton
+				// Begin #Gipsa
 				//adding stumulations from external application
 
-				//m_rKernelContext.getLogManager() << LogLevel_Error << "popay:" << p << "\n";
 				if (m_bIsExternalStimulationsEnabled)
 				{
-				   //m_rKernelContext.getLogManager() << LogLevel_Error << "Checking for external stimulations:" << p << "\n";
-				   addExternalStimulations(&l_oStimulationSet,m_rKernelContext.getLogManager(),start,end);
+					//m_rKernelContext.getLogManager() << LogLevel_Error << "Checking for external stimulations:" << p << "\n";
+					addExternalStimulations(&l_oStimulationSet,m_rKernelContext.getLogManager(),start,end);
 				}
-
-				//for debug only
-/*
-				for(int p=0;p<l_oStimulationSet.getStimulationCount();p++)
-				{
-					if (l_oStimulationSet.getStimulationIdentifier(p) >= OVTK_StimulationId_Label_00 && l_oStimulationSet.getStimulationIdentifier(p) <= OVTK_StimulationId_Label_10)
-					{
-						total_before_leaving_ac++;
-					}
-				}
-*/
 				
 				OpenViBEToolkit::Tools::StimulationSet::copy(*ip_pStimulationSet, l_oStimulationSet, -int64(l_rInfo.m_ui64StimulationTimeOffset));
 
-				//end of simulation buffer
+				// End #Gipsa
 
 				op_pEncodedMemoryBuffer->setSize(0, true);
 				m_pStreamEncoder->process(OVP_GD_Algorithm_MasterAcquisitionStreamEncoder_InputTriggerId_EncodeBuffer);
@@ -763,7 +750,7 @@ boolean CAcquisitionServer::start(void)
 	
 	if (m_bIsExternalStimulationsEnabled)
 	{
-		ftime(&m_CTStartTime); //anton
+		ftime(&m_CTStartTime); // #Gipsa
 		m_bIsESThreadRunning = true;
 		m_ESthreadPtr.reset(new boost::thread( boost::bind(&CAcquisitionServer::readExternalStimulations , this )));
 		m_rKernelContext.getLogManager() << LogLevel_Info << "Software tagging activated...\n";
@@ -774,7 +761,7 @@ boolean CAcquisitionServer::start(void)
 	m_vPendingBuffer.clear();
 	m_oPendingStimulationSet.clear();
 	m_vJitterSampleCount.clear();
-	m_vExternalStimulations.clear();//anton
+	m_vExternalStimulations.clear(); // #Gipsa
 
 	m_ui64SampleCount=0;
 	m_ui64LastSampleCount=0;
@@ -786,9 +773,8 @@ boolean CAcquisitionServer::start(void)
 	m_ui64LastDeliveryTime=m_ui64StartTime;
 
 	m_iDebugExternalStimulationsSent=0;
-	//total_before_leaving_ac = 0; //anton
 	m_iDebugCurrentReadIPCStimulations = 0;
-	m_iDebugStimulationsLost = 0; //anton
+	m_iDebugStimulationsLost = 0; // #Gipsa
 	m_iDebugStimulationsReceivedEarlier = 0;
 	m_iDebugStimulationsReceivedLate = 0;
 	m_iDebugStimulationsReceivedWrongSize = 0;
@@ -865,9 +851,6 @@ boolean CAcquisitionServer::stop(void)
 		itConnection=m_vConnection.erase(itConnection);
 	}
 
-	//anton
-	//m_rKernelContext.getLogManager() << LogLevel_Warning << "  Added external ones just before forwarding data: " << total_before_leaving_ac << "\n";
-
 	m_bStarted=false;
 
 	//software tagging diagnosting
@@ -930,20 +913,7 @@ boolean CAcquisitionServer::disconnect(void)
 
 void CAcquisitionServer::setSamples(const float32* pSample)
 {
-	////Anton
 	if (pSample==NULL) m_rKernelContext.getLogManager() << LogLevel_Warning << "Null data detected\n";
-	//if (pSample==NULL && m_bIsExternalTriggerEnabled)
-	//{
-	//	//peform reference point fix
-
-	//	uint64 adjustment_time = (m_ui32SampleCountPerSentBlock / m_ui32SamplingFrequency) * 1000; 
-	//	uint64 ct_start_time_ms = (m_CTStartTime.time * 1000 + m_CTStartTime.millitm);
-	//	ct_start_time_ms -= adjustment_time;
-
-	//	m_CTStartTime.time = ct_start_time_ms / 1000;
-	//	m_CTStartTime.millitm = ct_start_time_ms % 1000;
-	//}
-	//else //anton
 	this->setSamples(pSample, m_ui32SampleCountPerSentBlock);
 }
 
@@ -1295,11 +1265,12 @@ boolean CAcquisitionServer::acceptNewConnection(Socket::IConnection* pConnection
 	l_oInfo.m_pConnectionClientHandlerBoostThread=NULL; // not used
 	m_vPendingConnection.push_back(pair < Socket::IConnection*, SConnectionInfo > (pConnection, l_oInfo));
 
-	m_vExternalStimulations.clear();//anton
+	m_vExternalStimulations.clear(); // #Gipsa
 
 	return true;
 }
 
+// Begin #Gipsa
 void CAcquisitionServer::readExternalStimulations()
 {
 	using namespace boost::interprocess;
@@ -1428,17 +1399,6 @@ void CAcquisitionServer::addExternalStimulations(OpenViBE::CStimulationSet* ss, 
 				//we correct the timestamp to the current block and we send it
 				if (cii->timestamp < start)
 				{
-					/*uint64 l_ui64Time=start-cii->timestamp;
-					float64 l_f64Time=(l_ui64Time>>22)/1024.;*/
-					/*char l_sTime[1024];
-					::sprintf(l_sTime, "%.03lf", l_f64Time);
-					m_rKernelContext.getLogManager() << LogLevel_Error << "difference:" << CString(l_sTime) << "\n";*/
-					//if (l_f64Time*1000 > 300) //ignore very old stimulations
-					//{
-					//	cii->processed = true;
-					//	continue;
-					//   }
-
 					m_iDebugStimulationsReceivedLate++;
 					ss->appendStimulation(cii->identifier, start, duration_ms);
 					m_iDebugExternalStimulationsSent++;
@@ -1462,36 +1422,6 @@ void CAcquisitionServer::addExternalStimulations(OpenViBE::CStimulationSet* ss, 
 	}
 }
 
-#if 0
-UNUSED
-//#include <windows.h>
-void CAcquisitionServer::applyPriority(boost::thread* thread, int priority)
-{
-
-#ifdef WIN32
-
-
-    /*if (!thread)
-        return;
-
-	BOOL res;
-    HANDLE th = thread->native_handle();
-
-    switch (priority)
-    {
-		case THREAD_PRIORITY_TIME_CRITICAL               : res = SetThreadPriority(th, THREAD_PRIORITY_TIME_CRITICAL);   break;
-		case THREAD_PRIORITY_HIGHEST                   : res = SetThreadPriority(th, THREAD_PRIORITY_HIGHEST);                 break;
-		case THREAD_PRIORITY_ABOVE_NORMAL   : res = SetThreadPriority(th, THREAD_PRIORITY_ABOVE_NORMAL);    break;
-		case THREAD_PRIORITY_NORMAL                 : res = SetThreadPriority(th, THREAD_PRIORITY_NORMAL);                  break;
-		case THREAD_PRIORITY_BELOW_NORMAL   : res = SetThreadPriority(th, THREAD_PRIORITY_BELOW_NORMAL);    break;
-		case THREAD_PRIORITY_LOWEST                   : res = SetThreadPriority(th, THREAD_PRIORITY_LOWEST);                  break;
-    }*/
-
-#endif
-
-//for linux - the same - you get native nadle - you set the priority
-}
-#endif
 
 boolean CAcquisitionServer::setExternalStimulationsEnabled(boolean bActive)
 {
@@ -1503,5 +1433,5 @@ boolean CAcquisitionServer::isExternalStimulationsEnabled(void)
 {
 	return m_bIsExternalStimulationsEnabled;
 }
-
+// End #Gipsa
 

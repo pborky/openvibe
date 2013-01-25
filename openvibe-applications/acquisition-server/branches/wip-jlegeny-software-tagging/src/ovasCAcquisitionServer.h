@@ -173,7 +173,7 @@ namespace OpenViBEAcquisitionServer
 		OpenViBE::uint8* m_pSampleBuffer;
 		OpenViBE::CStimulationSet m_oPendingStimulationSet;
 
-	public: //anton 
+	public: // #Gipsa
 		
 		struct SExternalStimulation
 		{
@@ -195,21 +195,10 @@ namespace OpenViBEAcquisitionServer
 		OpenViBE::boolean m_bIsExternalStimulationsEnabled;
 		OpenViBE::CString m_sExternalStimulationsQueueName;
 
-		//Gipsa-only OpenViBE::uint32 total_before_leaving_ac;
-		//UNUSED OpenViBE::uint32 counter1;
-		//UNUSED OpenViBE::uint32 counter2;
-		//UNUSED OpenViBE::uint32 counter3;
-		//UNUSED OpenViBE::uint32 totalDropped;
-
-		//VRPNTagger* m_vprnTagger;
-
-//UNUSED		bool vrpn_enabled;
-//UNUSED		void applyPriority(boost::thread* thread, int priority);
-
 		OpenViBE::boolean setExternalStimulationsEnabled(OpenViBE::boolean bActive);
 		OpenViBE::boolean isExternalStimulationsEnabled(void);
 
-// Debugging
+		// Debugging of external stimulations
 		int m_iDebugStimulationsLost;
 		int m_iDebugExternalStimulationsSent;
 		int m_iDebugCurrentReadIPCStimulations;
