@@ -290,7 +290,6 @@ CAcquisitionServer::CAcquisitionServer(const IKernelContext& rKernelContext)
 	//check for software tagging
 	//value not memorized
 	this->setExternalStimulationsEnabled(m_rKernelContext.getConfigurationManager().expandAsBoolean("${AcquisitionServer_ExternalStimulations}",false));
-	std::cout << "name " <<m_rKernelContext.getConfigurationManager().expand("${AcquisitionServer_ExternalStimulationsQueueName}");
 	m_sExternalStimulationsQueueName=m_rKernelContext.getConfigurationManager().expand("${AcquisitionServer_ExternalStimulationsQueueName}");
 }
 
@@ -1277,8 +1276,8 @@ void CAcquisitionServer::readExternalStimulations()
 
 	char mq_name[255];
 
-	std::cout << "Creating External Stimulations thread" << std::endl;
-	std::cout << "Queue Name : " << m_sExternalStimulationsQueueName << std::endl;
+	//std::cout << "Creating External Stimulations thread" << std::endl;
+	//std::cout << "Queue Name : " << m_sExternalStimulationsQueueName << std::endl;
 	//std::strcpy(mq_name, m_sExternalStimulationsQueueName.toASCIIString());
 	const int chunk_length=3;
 	const int pause_time=5;
