@@ -1,0 +1,58 @@
+/**
+ * \page BoxAlgorithm_ARFeatures AR Features
+__________________________________________________________________
+
+Detailed description
+__________________________________________________________________
+
+ * |OVP_DocBegin_BoxAlgorithm_ARFeatures_Description|
+ * |OVP_DocEnd_BoxAlgorithm_ARFeatures_Description|
+__________________________________________________________________
+
+Inputs description
+__________________________________________________________________
+
+ * |OVP_DocBegin_BoxAlgorithm_ARFeatures_Inputs|
+ * |OVP_DocEnd_BoxAlgorithm_ARFeatures_Inputs|
+
+ * |OVP_DocBegin_BoxAlgorithm_ARFeatures_Input1|
+ The input signal. 
+ * |OVP_DocEnd_BoxAlgorithm_ARFeatures_Input1|
+__________________________________________________________________
+
+Outputs description
+__________________________________________________________________
+
+ * |OVP_DocBegin_BoxAlgorithm_ARFeatures_Outputs|
+ * |OVP_DocEnd_BoxAlgorithm_ARFeatures_Outputs|
+
+ * |OVP_DocBegin_BoxAlgorithm_ARFeatures_Output1|
+ The AR coefficients stored in a Feature vector
+ * |OVP_DocEnd_BoxAlgorithm_ARFeatures_Output1|
+__________________________________________________________________
+
+Settings description
+__________________________________________________________________
+
+ * |OVP_DocBegin_BoxAlgorithm_ARFeatures_Settings|
+ * |OVP_DocEnd_BoxAlgorithm_ARFeatures_Settings|
+
+ * |OVP_DocBegin_BoxAlgorithm_ARFeatures_Setting1|
+ Specify the order, thus the number of coefficients calculated
+ * |OVP_DocEnd_BoxAlgorithm_ARFeatures_Setting1|
+__________________________________________________________________
+
+Examples description
+__________________________________________________________________
+
+ * |OVP_DocBegin_BoxAlgorithm_ARFeatures_Examples|
+ * |OVP_DocEnd_BoxAlgorithm_ARFeatures_Examples|
+__________________________________________________________________
+
+Miscellaneous description
+__________________________________________________________________
+
+ * |OVP_DocBegin_BoxAlgorithm_ARFeatures_Miscellaneous|
+The output feauture vector contains the coefficients for each channel : the first [order+1] elements are the coef. of the first channel, etc. 
+ * |OVP_DocEnd_BoxAlgorithm_ARFeatures_Miscellaneous|
+ */
