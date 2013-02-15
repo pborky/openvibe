@@ -3,7 +3,7 @@
 # Adds library to target
 # Adds include path
 # ---------------------------------
-FIND_PATH(PATH_OGRE3D include/Ogre.h PATHS $ENV{OpenViBE_dependencies} $ENV{OV_DEP_OGRE3D} $ENV{OGRE_HOME})
+FIND_PATH(PATH_OGRE3D include/Ogre.h PATHS $ENV{OpenViBE_dependencies} ${OV_WIN32_DEP_DIR}/ogre $ENV{OGRE_HOME})
 IF(PATH_OGRE3D)
 	MESSAGE(STATUS "  Found Ogre3D...")
 	INCLUDE_DIRECTORIES(${PATH_OGRE3D}/include)
