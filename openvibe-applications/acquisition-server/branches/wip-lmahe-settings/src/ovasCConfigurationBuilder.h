@@ -34,8 +34,8 @@ namespace OpenViBEAcquisitionServer
 		virtual OpenViBE::boolean preConfigure(void);
 		virtual OpenViBE::boolean doConfigure(void);
 		virtual OpenViBE::boolean postConfigure(void);
-		virtual OpenViBE::boolean save(void);
-		virtual OpenViBE::boolean load(void);
+		virtual OpenViBE::boolean saveConfiguration(void);
+		virtual OpenViBE::boolean loadConfiguration(void);
 		virtual OpenViBE::boolean CheckLoad(void);
 
 	private:
@@ -72,9 +72,6 @@ namespace OpenViBEAcquisitionServer
 		//#lm
 		std::stringstream m_sChannelConfiguration;
 		std::string m_sChannelConfigurationFilename;
-		std::string m_sDriverConfigurationFilename;//should be a temporary file
-		std::string m_sLoadModeConfigurationFilename;//file where the load mode is written
-		std::string m_sAcquisitionServerConfigurationFilename;
 		OpenViBE::boolean m_bLoadFromFile;// do we load the configuration from a file or not
 	};
 };

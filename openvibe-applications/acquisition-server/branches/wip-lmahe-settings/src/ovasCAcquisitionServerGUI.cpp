@@ -222,10 +222,6 @@ CAcquisitionServerGUI::CAcquisitionServerGUI(const IKernelContext& rKernelContex
 
 	m_pAcquisitionServerThread=new CAcquisitionServerThread(m_rKernelContext, *this, *m_pAcquisitionServer);
 
-	m_sLoadModeConfigurationFilename = "";
-	m_sLoadModeConfigurationFilename.append(m_rKernelContext.getConfigurationManager().expand("${UserHome}") );
-	m_sLoadModeConfigurationFilename.append("/.config/openvibe/openvibe-acquisition-loadmoderc");
-
 	// Initialize GTK objects as the thread started below may refer to them quickly
 	this->initialize(); 
 
@@ -240,16 +236,7 @@ CAcquisitionServerGUI::~CAcquisitionServerGUI(void)
 	m_pThread->join();
 
 	// Saves current configuration
-	std::cout<<"destruction : default save\n";
-	save();
-	//set the load mode to 1 to load the last used configuration
-	FILE* l_pFile2=::fopen(m_sLoadModeConfigurationFilename.c_str(), "wt");
-	if(l_pFile2)
-	{
-		::fprintf(l_pFile2, "%u",1);
-		::fclose(l_pFile2);
-	}
-	std::cout<<"load mode to 1 in "<< m_sLoadModeConfigurationFilename <<"\n";
+	saveConfiguration(m_rKernelContext.getConfigurationManager().expand("${CustomConfigurationApplication}").toASCIIString());
 
 	vector<IDriver*>::iterator itDriver;
 	for(itDriver=m_vDriver.begin(); itDriver!=m_vDriver.end(); itDriver++)
@@ -385,17 +372,9 @@ boolean CAcquisitionServerGUI::initialize(void)
 	gtk_widget_show(GTK_WIDGET(gtk_builder_get_object(m_pBuilderInterface, "openvibe-acquisition-server")));
 
 
-	//load mode to 1 to inform the driver it has to lad from the file
-	std::cout<<"creating load mode file  "<< m_sLoadModeConfigurationFilename <<" to mode 1\n";
-	FILE* l_pFile2=::fopen(m_sLoadModeConfigurationFilename.c_str(), "wt");
-	if(l_pFile2)
-	{
-	    ::fprintf(l_pFile2, "%u",1);
-	    ::fclose(l_pFile2);
-	}
-	//prepare the driver
-	//std::cout << "\n\n Initial driver configuration !!!\n";
-	m_pDriver->configure();
+	OpenViBE::CString flt = m_rKernelContext.getConfigurationManager().expand("${CustomConfigurationApplication}");
+	loadDriverConfiguration(flt.toASCIIString());
+
 
 	return true;
 }
@@ -438,7 +417,7 @@ void CAcquisitionServerGUI::setDrift(float64 f64Drift)
 	boolean l_bDriftWarning=false;
 	char l_sLabel[1024];
 
-	// std::cout << f64Drift << " " << l_f64DriftRatio << "\n";
+	//m_rKernelContext.getLogManager() << LogLevel_Debug << f64Drift << " " << l_f64DriftRatio << "\n";
 
 	if(l_f64DriftRatio<-1)
 	{
@@ -547,7 +526,7 @@ void CAcquisitionServerGUI::disconnect(void)
 
 void CAcquisitionServerGUI::buttonConnectToggledCB(::GtkToggleButton* pButton)
 {
-	m_rKernelContext.getLogManager() << LogLevel_Debug << "buttonConnectToggledCB\n";
+	//m_rKernelContext.getLogManager() << LogLevel_Debug << "buttonConnectToggledCB\n";
 
 	if(gtk_toggle_button_get_active(pButton))
 	{
@@ -635,7 +614,7 @@ void CAcquisitionServerGUI::buttonConnectToggledCB(::GtkToggleButton* pButton)
 
 void CAcquisitionServerGUI::buttonStartPressedCB(::GtkButton* pButton)
 {
-	m_rKernelContext.getLogManager() << LogLevel_Debug << "buttonStartPressedCB\n";
+	//m_rKernelContext.getLogManager() << LogLevel_Debug << "buttonStartPressedCB\n";
 
 	if(m_pAcquisitionServerThread->start())
 	{
@@ -658,7 +637,7 @@ void CAcquisitionServerGUI::buttonStartPressedCB(::GtkButton* pButton)
 
 void CAcquisitionServerGUI::buttonStopPressedCB(::GtkButton* pButton)
 {
-	m_rKernelContext.getLogManager() << LogLevel_Debug << "buttonStopPressedCB\n";
+	//m_rKernelContext.getLogManager() << LogLevel_Debug << "buttonStopPressedCB\n";
 
 	if(m_pAcquisitionServerThread->stop())
 	{
@@ -676,7 +655,7 @@ void CAcquisitionServerGUI::buttonStopPressedCB(::GtkButton* pButton)
 
 void CAcquisitionServerGUI::buttonPreferencePressedCB(::GtkButton* pButton)
 {
-	m_rKernelContext.getLogManager() << LogLevel_Debug << "buttonPreferencePressedCB\n";
+	//m_rKernelContext.getLogManager() << LogLevel_Debug << "buttonPreferencePressedCB\n";
 
 	::GtkBuilder* l_pInterface=gtk_builder_new();
 	::gtk_builder_add_from_file(l_pInterface, OVAS_GUI_File, NULL);
@@ -794,7 +773,7 @@ void CAcquisitionServerGUI::buttonPreferencePressedCB(::GtkButton* pButton)
 
 void CAcquisitionServerGUI::buttonConfigurePressedCB(::GtkButton* pButton)
 {
-	m_rKernelContext.getLogManager() << LogLevel_Debug << "buttonConfigurePressedCB\n";
+	//m_rKernelContext.getLogManager() << LogLevel_Debug << "buttonConfigurePressedCB\n";
 
 	if(m_pDriver->isConfigurable())
 	{
@@ -804,7 +783,7 @@ void CAcquisitionServerGUI::buttonConfigurePressedCB(::GtkButton* pButton)
 
 void CAcquisitionServerGUI::comboBoxDriverChanged(::GtkComboBox* pComboBox)
 {
-	m_rKernelContext.getLogManager() << LogLevel_Debug << "comboBoxDriverChanged\n";
+	//m_rKernelContext.getLogManager() << LogLevel_Debug << "comboBoxDriverChanged\n";
 	m_pDriver=m_vDriver[gtk_combo_box_get_active(pComboBox)];
 	gtk_widget_set_sensitive(GTK_WIDGET(gtk_builder_get_object(m_pBuilderInterface, "button_configure")), m_pDriver->isConfigurable());
 }
@@ -812,7 +791,7 @@ void CAcquisitionServerGUI::comboBoxDriverChanged(::GtkComboBox* pComboBox)
 void CAcquisitionServerGUI::comboBoxSampleCountPerSentBlockChanged(::GtkComboBox* pComboBox)
 {
 	int l_iSampleCountPerSentBlock=0;
-	m_rKernelContext.getLogManager() << LogLevel_Debug << "comboBoxSampleCountPerSentBlockChanged\n";
+	//m_rKernelContext.getLogManager() << LogLevel_Debug << "comboBoxSampleCountPerSentBlockChanged\n";
 	if(::sscanf(::gtk_combo_box_get_active_text(GTK_COMBO_BOX(::gtk_builder_get_object(m_pBuilderInterface, "combobox_sample_count_per_sent_block"))), "%i", &l_iSampleCountPerSentBlock)==1 && l_iSampleCountPerSentBlock>0)
 	{
 		m_ui32SampleCountPerBuffer=uint32(l_iSampleCountPerSentBlock);
@@ -881,7 +860,7 @@ void CAcquisitionServerGUI::buttonSavePressedCB(::GtkButton* pButton)
     if(gtk_dialog_run(GTK_DIALOG(l_pWidgetDialogOpen))==GTK_RESPONSE_ACCEPT)
     {
 		char* l_sFileName=gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(l_pWidgetDialogOpen));
-		save(l_sFileName);
+		saveConfiguration(l_sFileName);
     }
     gtk_widget_destroy(l_pWidgetDialogOpen);
 }
@@ -901,24 +880,17 @@ void CAcquisitionServerGUI::buttonLoadPressedCB(::GtkButton* pButton)
     if(gtk_dialog_run(GTK_DIALOG(l_pWidgetDialogOpen))==GTK_RESPONSE_ACCEPT)
     {
 		char* l_sFileName=gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(l_pWidgetDialogOpen));
-		load(l_sFileName);
+		loadConfiguration(l_sFileName);
     }
     gtk_widget_destroy(l_pWidgetDialogOpen);
 
 }
 
-void CAcquisitionServerGUI::save(void)
-{
-	//save with default file
-	std::cout<<"default save\n";
-	save(m_rKernelContext.getConfigurationManager().expand("${CustomConfigurationApplication}").toASCIIString());
-}
-
-void CAcquisitionServerGUI::save(const char* filename)
+void CAcquisitionServerGUI::saveConfiguration(const char* sFileName)
 {
 	// Saves current configuration
-	FILE* l_pFile=::fopen(filename, "wt");
-	  std::cout << "saving configuration to " << filename <<"\n";
+	FILE* l_pFile=::fopen(sFileName, "wt");
+	//m_rKernelContext.getLogManager() << LogLevel_Debug << "saving configuration to " << sFileName <<"\n";
 
 	if(l_pFile)
 	{
@@ -963,15 +935,8 @@ void CAcquisitionServerGUI::save(const char* filename)
 		}
 
 		//copy the driver settings from the driver settings file after this
-		//*
-		std::string filename = "";
-		filename.append(m_rKernelContext.getConfigurationManager().expand("${UserHome}") );
-		filename.append("/.config/openvibe/openvibe-acquisition-server-driverrc");
-		std::ifstream  src(filename.c_str() );
-		std::stringstream dst;
-		dst << src.rdbuf();
-		::fprintf(l_pFile, dst.str().c_str() );
-		//*/
+		OpenViBE::CString l_sDriverConfiguration = m_pDriver->getHeader()->getDriverConfiguration();
+		::fprintf(l_pFile, l_sDriverConfiguration.toASCIIString() );
 
 		::fclose(l_pFile);
 	}
@@ -980,30 +945,29 @@ void CAcquisitionServerGUI::save(const char* filename)
 
 
 
-void CAcquisitionServerGUI::load(char* FileToLoad)
+void CAcquisitionServerGUI::loadConfiguration(char* sFileToLoad)
 {
-	std::ifstream  src(FileToLoad);
-
-	std::map<std::string, std::string> TokenValues;
+	std::ifstream  l_sConfigurationStream(sFileToLoad);
+	std::map<std::string, std::string> l_mTokenValues;
 
 	//get the token values
-	if(src)
+	if(l_sConfigurationStream)
 	{
-	    string sLine = "";
-	    while (!src.eof())
+	    string l_sLine = "";
+	    while (!l_sConfigurationStream.eof())
 	    {
-		  getline(src, sLine);
+		  getline(l_sConfigurationStream, l_sLine);
 
-		  int sep = sLine.find("=");
-		  if (sep!=-1)
+		  int l_iSeparator = l_sLine.find("=");
+		  if (l_iSeparator!=-1)
 		  {
-			string Token = sLine.substr(0,sep-1) ;
-			string Value = sLine.substr(sep+2);
-			TokenValues[Token] = Value;
-			//std::cout <<Token<<" = "<<Value<<"\n";
+			string l_sToken = l_sLine.substr(0,l_iSeparator-1) ;
+			string l_sValue = l_sLine.substr(l_iSeparator+2);
+			l_mTokenValues[l_sToken] = l_sValue;
+			//m_rKernelContext.getLogManager() << LogLevel_Debug <<Token<<" = "<<Value<<"\n";
 		  }
 	    }
-	    src.close();
+	    l_sConfigurationStream.close();
 	}
 
 	//acquisition server settings					---------------------------------------------------------------
@@ -1011,90 +975,116 @@ void CAcquisitionServerGUI::load(char* FileToLoad)
 	for(int i=0; i<m_vDriver.size(); i++)
 	{
 		string l_sDriverName=m_vDriver[i]->getName();
-		if (l_sDriverName == TokenValues["AcquisitionServer_LastDriver"])
+		if (l_sDriverName == l_mTokenValues["AcquisitionServer_LastDriver"])
 		{
 			gtk_combo_box_set_active(l_pComboBoxDriver, i);
 		}
 	}
 
 	::GtkSpinButton* l_pSpinButtonConnectionPort=GTK_SPIN_BUTTON(gtk_builder_get_object(m_pBuilderInterface, "spinbutton_connection_port"));
-	gtk_spin_button_set_value(l_pSpinButtonConnectionPort, (gdouble)atoi(TokenValues["AcquisitionServer_LastConnectionPort"].c_str() ));
+	gtk_spin_button_set_value(l_pSpinButtonConnectionPort, (gdouble)atoi(l_mTokenValues["AcquisitionServer_LastConnectionPort"].c_str() ));
 
 	::GtkComboBox* l_pComboBoxSampleCountPerBuffer=GTK_COMBO_BOX(gtk_builder_get_object(m_pBuilderInterface, "combobox_sample_count_per_sent_block"));
 	for(int i=0; ; i++)
 	{
 		gtk_combo_box_set_active(l_pComboBoxSampleCountPerBuffer, i);
-		if(TokenValues["AcquisitionServer_LastSampleCountPerBuffer"]==gtk_combo_box_get_active_text(l_pComboBoxSampleCountPerBuffer))
+		if(l_mTokenValues["AcquisitionServer_LastSampleCountPerBuffer"]==gtk_combo_box_get_active_text(l_pComboBoxSampleCountPerBuffer))
 		{
 			break;
 		}
 	}
 
 	//acquisition server preferences			--------------------------------------------------------------------------------
-	int DriftToleranceDuration = atoi(TokenValues["AcquisitionServer_DriftToleranceDuration"].c_str());
-	int JitterEstimationCountForDrift = atoi(TokenValues["AcquisitionServer_JitterEstimationCountForDrift"].c_str());
-	int OverSamplingFactor =  atoi(TokenValues["AcquisitionServer_OverSamplingFactor"].c_str());
-	bool ImpedanceCheckRequest = false;
-	if (TokenValues["AcquisitionServer_CheckImpedance"] == "True")
+	int l_iDriftToleranceDuration = atoi(l_mTokenValues["AcquisitionServer_DriftToleranceDuration"].c_str());
+	int l_iJitterEstimationCountForDrift = atoi(l_mTokenValues["AcquisitionServer_JitterEstimationCountForDrift"].c_str());
+	int l_iOverSamplingFactor =  atoi(l_mTokenValues["AcquisitionServer_OverSamplingFactor"].c_str());
+	bool l_bImpedanceCheckRequest = false;
+	if (l_mTokenValues["AcquisitionServer_CheckImpedance"] == "True")
 	{
-		ImpedanceCheckRequest = true;
+		l_bImpedanceCheckRequest = true;
 	}
-	std::string NaNReplacementPolicy = TokenValues["AcquisitionServer_NaNReplacementPolicy"];
-	ENaNReplacementPolicy iNaNReplacementPolicy;
-	if (NaNReplacementPolicy == "LastCorrectValue")
+	std::string l_sNaNReplacementPolicy = l_mTokenValues["AcquisitionServer_NaNReplacementPolicy"];
+	ENaNReplacementPolicy l_iNaNReplacementPolicy;
+	if (l_sNaNReplacementPolicy == "LastCorrectValue")
 	{
-		iNaNReplacementPolicy = NaNReplacementPolicy_LastCorrectValue;
+		l_iNaNReplacementPolicy = NaNReplacementPolicy_LastCorrectValue;
 	}
-	else if (NaNReplacementPolicy == "Zero")
+	else if (l_sNaNReplacementPolicy == "Zero")
 	{
-		iNaNReplacementPolicy = NaNReplacementPolicy_Zero;
+		l_iNaNReplacementPolicy = NaNReplacementPolicy_Zero;
 	}
-	else if (NaNReplacementPolicy == "Disabled")
+	else if (l_sNaNReplacementPolicy == "Disabled")
 	{
-		iNaNReplacementPolicy = NaNReplacementPolicy_Disabled;
-	}
-
-	std::string DriftCorrectionPolicy = TokenValues["AcquisitionServer_DriftCorrectionPolicy"];
-	EDriftCorrectionPolicy iDriftCorrectionPolicy;
-	if (DriftCorrectionPolicy == "DriverChoice")
-	{
-		iDriftCorrectionPolicy = DriftCorrectionPolicy_DriverChoice;
-	}
-	else if (DriftCorrectionPolicy == "Forced")
-	{
-		iDriftCorrectionPolicy = DriftCorrectionPolicy_Forced;
-	}
-	else if (DriftCorrectionPolicy == "Disabled")
-	{
-		iDriftCorrectionPolicy = DriftCorrectionPolicy_Disabled;
+		l_iNaNReplacementPolicy = NaNReplacementPolicy_Disabled;
 	}
 
-	m_pAcquisitionServer->setNaNReplacementPolicy( iNaNReplacementPolicy );
-	m_pAcquisitionServer->setDriftCorrectionPolicy( iDriftCorrectionPolicy );
-	m_pAcquisitionServer->setDriftToleranceDuration( DriftToleranceDuration );
-	m_pAcquisitionServer->setJitterEstimationCountForDrift( JitterEstimationCountForDrift );
-	m_pAcquisitionServer->setOversamplingFactor(  OverSamplingFactor);
-	m_pAcquisitionServer->setImpedanceCheckRequest( ImpedanceCheckRequest );
+	std::string l_sDriftCorrectionPolicy = l_mTokenValues["AcquisitionServer_DriftCorrectionPolicy"];
+	EDriftCorrectionPolicy l_iDriftCorrectionPolicy;
+	if (l_sDriftCorrectionPolicy == "DriverChoice")
+	{
+		l_iDriftCorrectionPolicy = DriftCorrectionPolicy_DriverChoice;
+	}
+	else if (l_sDriftCorrectionPolicy == "Forced")
+	{
+		l_iDriftCorrectionPolicy = DriftCorrectionPolicy_Forced;
+	}
+	else if (l_sDriftCorrectionPolicy == "Disabled")
+	{
+		l_iDriftCorrectionPolicy = DriftCorrectionPolicy_Disabled;
+	}
+
+	m_pAcquisitionServer->setNaNReplacementPolicy( l_iNaNReplacementPolicy );
+	m_pAcquisitionServer->setDriftCorrectionPolicy( l_iDriftCorrectionPolicy );
+	m_pAcquisitionServer->setDriftToleranceDuration( l_iDriftToleranceDuration );
+	m_pAcquisitionServer->setJitterEstimationCountForDrift( l_iJitterEstimationCountForDrift );
+	m_pAcquisitionServer->setOversamplingFactor(  l_iOverSamplingFactor);
+	m_pAcquisitionServer->setImpedanceCheckRequest( l_bImpedanceCheckRequest );
 	//----------------------------------------------------------------------
+	loadDriverConfiguration(sFileToLoad);
+}
 
+void CAcquisitionServerGUI::loadDriverConfiguration(const char* sFileToLoad)
+{
+	std::ifstream  l_sConfigurationStream(sFileToLoad);
+	int l_iDriverConfigurationBeginning;
 
-//*
-	const char* LastUsedConfigurationFilename = m_rKernelContext.getConfigurationManager().expand("${CustomConfigurationApplication}").toASCIIString();
-	std::cout<<LastUsedConfigurationFilename<<" LastUsedConfigurationFilename\n";
-	//replace last used configuration with the one we are loading
-	std::ifstream  src2(FileToLoad);
-	std::ofstream  dst(LastUsedConfigurationFilename);
-	dst << src2.rdbuf();
-
-	//load mode to 1 to inform the driver it has to lad from the file
-	FILE* l_pFile2=::fopen(m_sLoadModeConfigurationFilename.c_str(), "wt");
-	if(l_pFile2)
+	if(l_sConfigurationStream)
 	{
-	    ::fprintf(l_pFile2, "%u",1);
-	    ::fclose(l_pFile2);
-	}
-	//configure the driver
-	m_pDriver->configure();
+	    string l_sLine = "";
+	    while (!l_sConfigurationStream.eof())
+	    {
+		  getline(l_sConfigurationStream, l_sLine);
+		  int l_iDriverConfigurationSeparator = l_sLine.find("# Driver");
+		  if (l_iDriverConfigurationSeparator!=-1)
+		  {
+			  l_iDriverConfigurationBeginning = l_sConfigurationStream.tellg();
+		  }
+	    }
+	    //clear error bit after eof flag is set
+	    l_sConfigurationStream.clear();
 
-	//*/
+	    l_sConfigurationStream.seekg(l_iDriverConfigurationBeginning, l_sConfigurationStream.beg);
+	    std::stringstream l_sDriverConfigurationStream;
+	    l_sDriverConfigurationStream << l_sConfigurationStream.rdbuf();
+
+	    OpenViBE::CString l_sDriverConfiguration(l_sDriverConfigurationStream.str().c_str());
+	    m_rKernelContext.getLogManager() << LogLevel_Info << "\n\nConfiguration To Load is \n|"<< l_sDriverConfiguration << "|\n\n";
+	    setDriverConfiguration(l_sDriverConfiguration);
+	    //load mode to 1 to inform the driver it has to lad from the file
+	    setLoadMode(true);
+	    //configure the driver
+	    m_pDriver->configure();
+
+	    l_sConfigurationStream.close();
+	}
+}
+
+void CAcquisitionServerGUI::setLoadMode(boolean bLoadMode)
+{
+	const_cast<OpenViBEAcquisitionServer::IHeader*>(m_pDriver->getHeader())->setLoadMode(bLoadMode);
+}
+
+void CAcquisitionServerGUI::setDriverConfiguration(OpenViBE::CString sConfigurationToLoad)
+{
+	const_cast<OpenViBEAcquisitionServer::IHeader*>(m_pDriver->getHeader())->setDriverConfiguration(sConfigurationToLoad);
 }

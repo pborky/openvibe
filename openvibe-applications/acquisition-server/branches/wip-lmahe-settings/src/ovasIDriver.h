@@ -446,7 +446,6 @@ namespace OpenViBEAcquisitionServer
 		 * \sa IHeader
 		 */
 		virtual const OpenViBEAcquisitionServer::IHeader* getHeader(void)=0;
-
 		//@}
 		/** \name Starting / Stopping acquisition */
 		//@{

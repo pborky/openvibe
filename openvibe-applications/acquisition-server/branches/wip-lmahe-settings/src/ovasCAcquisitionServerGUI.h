@@ -41,9 +41,11 @@ namespace OpenViBEAcquisitionServer
 		void setImpedance(OpenViBE::uint32 ui32ChannelIndex, OpenViBE::float64 f64Impedance);
 		void disconnect(void);
 
-		void save(const char* Filename);
-		void save(void);
-		void load(char* FileToLoad);
+		void saveConfiguration(const char* sFileName);
+		void loadConfiguration(char* sFileToLoad);
+		void loadDriverConfiguration(const char* sFileToLoad);
+		void setLoadMode(OpenViBE::boolean bLoadMode);
+		void setDriverConfiguration(OpenViBE::CString sConfigurationToLoad);
 
 		// GTK button callbacks
 		virtual void buttonPreferencePressedCB(::GtkButton* pButton);
@@ -119,8 +121,6 @@ namespace OpenViBEAcquisitionServer
 		std::vector < ::GtkWidget* > m_vLevelMesure;
 
 		boost::thread* m_pThread;
-
-		std::string m_sLoadModeConfigurationFilename;
 	};
 };
 

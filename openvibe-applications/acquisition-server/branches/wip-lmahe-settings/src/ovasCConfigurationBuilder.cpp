@@ -87,19 +87,6 @@ CConfigurationBuilder::CConfigurationBuilder(const char* sGtkBuilderFileName)
 	,m_sGtkBuilderChannelsFileName(OVAS_ConfigureGUIElectrodes_File)
 	,m_pHeader(NULL)
 {
-	std::string l_sDriver(USER_HOME);
-	std::string l_sLoadMode(USER_HOME);
-	std::string l_sAcquisition(USER_HOME);
-	l_sDriver.append("/.config/openvibe/openvibe-acquisition-server-driverrc");
-	l_sLoadMode.append("/.config/openvibe/openvibe-acquisition-loadmoderc");
-	l_sAcquisition.append("/.config/openvibe/openvibe-acquisition-serverrc");
-
-	m_sDriverConfigurationFilename = l_sDriver;
-	m_sLoadModeConfigurationFilename = l_sLoadMode;
-	m_sAcquisitionServerConfigurationFilename = l_sAcquisition;
-
-	std::cout <<"m_sDriverConfigurationFilename "<<m_sDriverConfigurationFilename<<"\n";
-	std::cout <<"m_sLoadModeConfigurationFilename "<<m_sLoadModeConfigurationFilename<<"\n";
 }
 
 CConfigurationBuilder::~CConfigurationBuilder(void)
@@ -241,7 +228,7 @@ boolean CConfigurationBuilder::doConfigure(void)
 	CheckLoad();
 	if (m_bLoadFromFile)
 	{
-		load();
+		loadConfiguration();
 		return true;
 	}
 	else
@@ -271,7 +258,7 @@ boolean CConfigurationBuilder::postConfigure(void)
 		//Only save the configuration if we apply the changes and we did not load from a file
 		if (!m_bLoadFromFile)
 		{
-		  save();
+		  saveConfiguration();
 		}
 	}
 
@@ -572,194 +559,151 @@ void CConfigurationBuilder::treeviewApplyChannelNameCB(void)
 	this->buttonApplyChannelNameCB();
 }
 
-boolean CConfigurationBuilder::save(void)
+boolean CConfigurationBuilder::saveConfiguration(void)
 {
-	//std::cout <<" CConfigurationBuilder::save() \n";
 	std::stringstream l_sConfigurationTokenAndValues;
 
 	//retrieve all objects from the interface
-	GSList * list = gtk_builder_get_objects(m_pBuilderConfigureInterface);
-	for (int i=0; i<g_slist_length(list); i++)
+	GSList * l_oGTKObjectList = gtk_builder_get_objects(m_pBuilderConfigureInterface);
+	for (int i=0; i<g_slist_length(l_oGTKObjectList); i++)
 	{
-		//convention for naming these variables?
-		gpointer pointer = g_slist_nth_data(list, i);
-		GObject* object = (GObject*)pointer;
-		GtkBuildable* buildable = (GtkBuildable*)object;
-		const gchar* l_cObjectType = G_OBJECT_TYPE_NAME(object);
-		string l_sObjectType(l_cObjectType);
-		std::string Token;
+		GObject* l_oGTKObject = (GObject*)g_slist_nth_data(l_oGTKObjectList, i);
+		GtkBuildable* l_oGTKBuildable = (GtkBuildable*)l_oGTKObject;
+		string l_sObjectType(G_OBJECT_TYPE_NAME(l_oGTKObject));
 
-		if (GTK_IS_BUILDABLE(buildable))
+		std::string l_sToken;
+
+		if (GTK_IS_BUILDABLE(l_oGTKBuildable))
 		{
-			Token = gtk_buildable_get_name( buildable );
+			l_sToken = gtk_buildable_get_name( l_oGTKBuildable );
 
 			if ( l_sObjectType == "GtkEntry" )
 			{
-				GtkEntry* Entry =  (GtkEntry*)object;
-				l_sConfigurationTokenAndValues << Token << " = " << gtk_entry_get_text(Entry) <<"\n";
+				l_sConfigurationTokenAndValues << l_sToken << " = " << gtk_entry_get_text((GtkEntry*)l_oGTKObject) <<"\n";
 			}
 			if ( l_sObjectType == "GtkSpinButton" )
 			{
-				GtkSpinButton* SpinButton =  (GtkSpinButton*)object;
-				l_sConfigurationTokenAndValues << Token << " = " << gtk_spin_button_get_value(SpinButton) <<"\n";
-
-			}
-			if ( l_sObjectType == "GtkButton" )
-			{
-				GtkButton* Button =  (GtkButton*)object;
+				l_sConfigurationTokenAndValues << l_sToken << " = " << gtk_spin_button_get_value((GtkSpinButton*)l_oGTKObject) <<"\n";
 			}
 			if ( l_sObjectType == "GtkToggleButton" )
 			{
-				GtkToggleButton* ToogleButton =  (GtkToggleButton*)object;
-				l_sConfigurationTokenAndValues << Token << " = " << gtk_toggle_button_get_active(ToogleButton) <<"\n";
+				l_sConfigurationTokenAndValues << l_sToken << " = " << gtk_toggle_button_get_active((GtkToggleButton*)l_oGTKObject) <<"\n";
 			}
 			if ( l_sObjectType == "GtkComboBox" )
 			{
-				GtkComboBox* ComboBox =  (GtkComboBox*)object;
-				l_sConfigurationTokenAndValues << Token << " = " << gtk_combo_box_get_active(ComboBox) <<"\n";
+				l_sConfigurationTokenAndValues << l_sToken << " = " << gtk_combo_box_get_active((GtkComboBox*)l_oGTKObject) <<"\n";
 			}
 
 		}
 	}
-	g_slist_free(list);
+	g_slist_free(l_oGTKObjectList);
 
+	std::stringstream l_ssDriverConfiguration;
+	l_ssDriverConfiguration<<"\n# Driver settings\n";
+	l_ssDriverConfiguration<<l_sConfigurationTokenAndValues.str();
+	l_ssDriverConfiguration<<m_sChannelConfiguration.str();
 
-	//open and write in the driver configuration file
-	OpenViBE::CString ConfFile(m_sDriverConfigurationFilename.c_str());
-	FILE* l_pFile=::fopen(ConfFile, "wt");
-	if(l_pFile)
-	{
-	::fprintf(l_pFile, "\n# Driver settings\n");
-	::fprintf(l_pFile, l_sConfigurationTokenAndValues.str().c_str() );
-	::fprintf(l_pFile, m_sChannelConfiguration.str().c_str() );
-	::fclose(l_pFile);
-	}
+	OpenViBE::CString l_soDriverConfiguration(l_ssDriverConfiguration.str().c_str());
+
+	this->m_pHeader->setDriverConfiguration(l_soDriverConfiguration);
+	std::cout<<"setDriverConf to "<< l_soDriverConfiguration <<endl;
 }
 
-//this function check if we are loading a configuration from a file or not
-//by checking in the load mode configuration file
-//I do this because I do not have a mean to transmit a variable from the AcquisitionSeverGUI
-//to this class without modifiying each driver
 boolean CConfigurationBuilder::CheckLoad(void)
 {
-    OpenViBE::CString ConfFile(m_sLoadModeConfigurationFilename.c_str());
-    FILE* l_pFile=::fopen(ConfFile, "r+");
-
-    std::cout << "check loading  configuration from " << ConfFile <<"\n";
-    uint32 mode;
-    if(l_pFile)
-    {
-	  ::fscanf (l_pFile, "%u", &mode);
-	  //::fseek ( l_pFile , 0 , SEEK_SET );
-	  //::fprintf(l_pFile, "%u",1);
-	  ::fclose(l_pFile);
-    }
-    std::cout <<"mode "<<mode<<"\n";
-
-    m_bLoadFromFile = (mode==0)?false:true;
-    return true;
+	m_bLoadFromFile = this->m_pHeader->getLoadMode();
+	return true;
 }
 
 
-boolean CConfigurationBuilder::load(void)
+boolean CConfigurationBuilder::loadConfiguration(void)
 {
-	OpenViBE::CString ConfFile(m_sAcquisitionServerConfigurationFilename.c_str());
-	ifstream l_pFile;
-	l_pFile.open(ConfFile);
-
-	//std::cout << "CConfiguration builder loading  configuration from " << ConfFile <<"\n";
-
 	std::map<std::string, std::string> l_mTokenValues;
 
-	//get the token values
-	if(l_pFile)
+	//get the configuration
+	std::string l_sDriverConfiguration(this->m_pHeader->getDriverConfiguration().toASCIIString());
+	std::cout << "CConfiguration builder loading  configuration " << l_sDriverConfiguration <<"\n";
+
+	//cut the lines
+	int l_iEndLine= l_sDriverConfiguration.find("\n");
+	while (l_iEndLine!=-1)
 	{
-		//TODO get to the driver section of the configuration file
-		//and only read these tokens
-		string sLine = "";
-		while (!l_pFile.eof())
+		//get a line
+		std::string l_sLine = l_sDriverConfiguration.substr(0, l_iEndLine);
+
+		//get the token values
+		int l_iSeparator = l_sLine.find("=");
+		if (l_iSeparator!=-1)
 		{
-			getline(l_pFile, sLine);
-
-			int sep = sLine.find("=");
-			if (sep!=-1)
-			{
-				string Token = sLine.substr(0,sep-1) ;
-				string Value = sLine.substr(sep+2);
-				l_mTokenValues[Token] = Value;
-				//std::cout <<Token<<" = "<<Value<<"\n";
-			}
+			string l_sToken = l_sLine.substr(0,l_iSeparator-1) ;
+			string l_sValue = l_sLine.substr(l_iSeparator+2);
+			l_mTokenValues[l_sToken] = l_sValue;
+			//std::cout <<Token<<" = "<<Value<<"\n";
 		}
-		l_pFile.close();
-	}
 
+		//erase the line we just processed
+		l_sDriverConfiguration.erase(0, l_iEndLine+1);
+		//find the next line
+		l_iEndLine= l_sDriverConfiguration.find("\n");
+	}
 
 	//put the values in
 	//get all the objects
-	GSList * list = gtk_builder_get_objects(m_pBuilderConfigureInterface);
-	for (int i=0; i<g_slist_length(list); i++)
+	GSList * l_oGTKObjectList = gtk_builder_get_objects(m_pBuilderConfigureInterface);
+	for (int i=0; i<g_slist_length(l_oGTKObjectList); i++)
 	{
-		gpointer pointer = g_slist_nth_data(list, i);
-		GObject* object = (GObject*)pointer;
-		GtkBuildable* buildable = (GtkBuildable*)object;
-		const gchar* l_cObjectType = G_OBJECT_TYPE_NAME(object);
-		string l_sObjectType(l_cObjectType);
-		std::string Token;
-		std::map<std::string, std::string>::iterator Iterator;
 
-		if (GTK_IS_BUILDABLE(buildable))
+		GObject* l_oGTKObject = (GObject*)g_slist_nth_data(l_oGTKObjectList, i);
+		GtkBuildable* l_oGTKBuildable = (GtkBuildable*)l_oGTKObject;
+		string l_sObjectType(G_OBJECT_TYPE_NAME(l_oGTKObject));
+
+		std::string l_sToken;
+		std::map<std::string, std::string>::iterator l_iIterator;
+
+		if (GTK_IS_BUILDABLE(l_oGTKBuildable))
 		{
-			Token = gtk_buildable_get_name( buildable );
+			l_sToken = gtk_buildable_get_name( l_oGTKBuildable );
 			//std::cout<<Token<<"\n";
-			Iterator = l_mTokenValues.find(Token);
+			l_iIterator = l_mTokenValues.find(l_sToken);
 			//if the token correspond to a gtkWidget name
 			//we fill this widget with the token value
-			if ( Iterator!=l_mTokenValues.end() )
+			if ( l_iIterator!=l_mTokenValues.end() )
 			{
-				std::string Value = l_mTokenValues[Token];
+				std::string l_sValue = l_mTokenValues[l_sToken];
 				if ( l_sObjectType == "GtkEntry" )
 				{
-					GtkEntry* Entry =  (GtkEntry*)object;
-					gtk_entry_set_text(Entry, Value.c_str() );
+					gtk_entry_set_text((GtkEntry*)l_oGTKObject, l_sValue.c_str() );
 				}
 				if ( l_sObjectType == "GtkSpinButton" )
 				{
-					GtkSpinButton* SpinButton =  (GtkSpinButton*)object;
-					gtk_spin_button_set_value(SpinButton, atoi(Value.c_str()) );
-				}
-				if ( l_sObjectType == "GtkButton" )
-				{
-					GtkButton* Button =  (GtkButton*)object;
+					gtk_spin_button_set_value((GtkSpinButton*)l_oGTKObject, atoi(l_sValue.c_str()) );
 				}
 				if ( l_sObjectType == "GtkToggleButton" )
 				{
-					GtkToggleButton* ToogleButton =  (GtkToggleButton*)object;
-					gtk_toggle_button_set_active(ToogleButton, atoi(Value.c_str()) );
+					gtk_toggle_button_set_active((GtkToggleButton*)l_oGTKObject, atoi(l_sValue.c_str()) );
 				}
 				if ( l_sObjectType == "GtkComboBox" )
 				{
-					GtkComboBox* ComboBox =  (GtkComboBox*)object;
-					gtk_combo_box_set_active(ComboBox, atoi(Value.c_str()) );
+					gtk_combo_box_set_active((GtkComboBox*)l_oGTKObject, atoi(l_sValue.c_str()) );
 				}
 			}
 		}
 
 	}
-	g_slist_free(list);
+	g_slist_free(l_oGTKObjectList);
 
 	//channel names are treated differently, it can be either a filename or directly the list of the channels name
-	std::map<std::string, std::string>::iterator Iterator;
-	std::string Token = "channel_configuration_filename";
-	Iterator = l_mTokenValues.find(Token);
+	std::map<std::string, std::string>::iterator l_iIterator;
+	std::string l_sToken = "channel_configuration_filename";
+	l_iIterator = l_mTokenValues.find(l_sToken);
 	//if we have a filename
-	if ( Iterator!=l_mTokenValues.end() )
+	if ( l_iIterator!=l_mTokenValues.end() )
 	{
-		std::string l_sFileName = l_mTokenValues[Token];
-		//ChangeChannelNamesFromFile(l_sFilename.c_str());
+		std::string l_sFileName = l_mTokenValues[l_sToken];
 		//same piece of code than in the function buttonChangeChannelNamesCB() switch case load
 		//TODO : avoid code duplication
 		std::list<string> l_vElectrodeName;
-		std::list<string>::iterator l;
+		std::list<string>::iterator l_iElectrode;
 		ifstream l_oFile(l_sFileName.c_str());
 		if(l_oFile.is_open())
 		{
@@ -774,9 +718,9 @@ boolean CConfigurationBuilder::load(void)
 		}
 
 		int i=0;
-		for (l = l_vElectrodeName.begin() ; l!=l_vElectrodeName.end(); l++)
+		for (l_iElectrode = l_vElectrodeName.begin() ; l_iElectrode!=l_vElectrodeName.end(); l_iElectrode++)
 		{
-			m_vChannelName[i] = *l;
+			m_vChannelName[i] = *l_iElectrode;
 			i++;
 		}
 	}
@@ -785,14 +729,14 @@ boolean CConfigurationBuilder::load(void)
 		int i=1;
 		do
 		{
-			std::stringstream Stream;
-			Stream <<"Channel"<<i;
-			Token = Stream.str();
-			Iterator = l_mTokenValues.find(Token);
-			std::string Value = l_mTokenValues[Token];
-			m_vChannelName[i-1] = Value;
+			std::stringstream l_sStream;
+			l_sStream <<"Channel"<<i;
+			l_sToken = l_sStream.str();
+			l_iIterator = l_mTokenValues.find(l_sToken);
+			std::string l_sValue = l_mTokenValues[l_sToken];
+			m_vChannelName[i-1] = l_sValue;
 			i++;
-		} while (Iterator!=l_mTokenValues.end());
+		} while (l_iIterator!=l_mTokenValues.end());
 	}
 
 
@@ -800,13 +744,7 @@ boolean CConfigurationBuilder::load(void)
 
 
     //set the load mode back to 0 (not from file, display the configuration dialog)
-    OpenViBE::CString ConfFile2(m_sLoadModeConfigurationFilename.c_str());
-    FILE* l_pFile2=::fopen(ConfFile2, "wt");
-    if(l_pFile2)
-    {
-	  ::fprintf(l_pFile2, "%u",0);
-	  ::fclose(l_pFile2);
-    }
+    this->m_pHeader->setLoadMode(false);
 
 }
 

@@ -244,6 +244,15 @@ namespace OpenViBEAcquisitionServer
 		 */
 		virtual ~IHeader(void) { }
 
+		virtual void setLoadMode(OpenViBE::boolean bLoadFromFile) {m_bLoadFromFile = bLoadFromFile;}
+		virtual OpenViBE::boolean getLoadMode(void) {return m_bLoadFromFile;}
+		virtual void setDriverConfiguration(OpenViBE::CString sNewDriverConfiguration) {m_sDriverConfiguration = sNewDriverConfiguration;}
+		virtual OpenViBE::CString getDriverConfiguration(void) const {return m_sDriverConfiguration;}
+
+	private:
+		OpenViBE::boolean m_bLoadFromFile;
+		OpenViBE::CString m_sDriverConfiguration;
+
 	public:
 
 		static void copy(OpenViBEAcquisitionServer::IHeader& rDestination, const OpenViBEAcquisitionServer::IHeader& rSource)
