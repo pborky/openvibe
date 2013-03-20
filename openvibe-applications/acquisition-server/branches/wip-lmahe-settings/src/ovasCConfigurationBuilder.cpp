@@ -225,7 +225,7 @@ boolean CConfigurationBuilder::preConfigure(void)
 boolean CConfigurationBuilder::doConfigure(void)
 {
 	//if we load the configuration from a file, we must not display the driver configuration dialog
-	CheckLoad();
+	checkLoad();
 	if (m_bLoadFromFile)
 	{
 		loadConfiguration();
@@ -565,7 +565,7 @@ boolean CConfigurationBuilder::saveConfiguration(void)
 
 	//retrieve all objects from the interface
 	GSList * l_oGTKObjectList = gtk_builder_get_objects(m_pBuilderConfigureInterface);
-	for (int i=0; i<g_slist_length(l_oGTKObjectList); i++)
+	for (uint32 i=0; i<g_slist_length(l_oGTKObjectList); i++)
 	{
 		GObject* l_oGTKObject = (GObject*)g_slist_nth_data(l_oGTKObjectList, i);
 		GtkBuildable* l_oGTKBuildable = (GtkBuildable*)l_oGTKObject;
@@ -607,9 +607,10 @@ boolean CConfigurationBuilder::saveConfiguration(void)
 
 	this->m_pHeader->setDriverConfiguration(l_soDriverConfiguration);
 	std::cout<<"setDriverConf to "<< l_soDriverConfiguration <<endl;
+	return true;
 }
 
-boolean CConfigurationBuilder::CheckLoad(void)
+boolean CConfigurationBuilder::checkLoad(void)
 {
 	m_bLoadFromFile = this->m_pHeader->getLoadMode();
 	return true;
@@ -626,6 +627,12 @@ boolean CConfigurationBuilder::loadConfiguration(void)
 
 	//cut the lines
 	int l_iEndLine= l_sDriverConfiguration.find("\n");
+
+	if (l_iEndLine==-1)
+	{
+		std::cout<<"Token not separated properly\n";
+		return false;
+	}
 	while (l_iEndLine!=-1)
 	{
 		//get a line
@@ -638,19 +645,27 @@ boolean CConfigurationBuilder::loadConfiguration(void)
 			string l_sToken = l_sLine.substr(0,l_iSeparator-1) ;
 			string l_sValue = l_sLine.substr(l_iSeparator+2);
 			l_mTokenValues[l_sToken] = l_sValue;
-			//std::cout <<Token<<" = "<<Value<<"\n";
-		}
+			//std::cout <<l_sToken<<" = "<<l_sValue<<"\n";
 
+		}
 		//erase the line we just processed
 		l_sDriverConfiguration.erase(0, l_iEndLine+1);
 		//find the next line
 		l_iEndLine= l_sDriverConfiguration.find("\n");
 	}
 
+	if (l_mTokenValues.size()==0)
+	{
+		std::cout<<"No token stored\n";
+		return false;
+	}
+
+
+
 	//put the values in
 	//get all the objects
 	GSList * l_oGTKObjectList = gtk_builder_get_objects(m_pBuilderConfigureInterface);
-	for (int i=0; i<g_slist_length(l_oGTKObjectList); i++)
+	for (uint32 i=0; i<g_slist_length(l_oGTKObjectList); i++)
 	{
 
 		GObject* l_oGTKObject = (GObject*)g_slist_nth_data(l_oGTKObjectList, i);
@@ -745,6 +760,8 @@ boolean CConfigurationBuilder::loadConfiguration(void)
 
     //set the load mode back to 0 (not from file, display the configuration dialog)
     this->m_pHeader->setLoadMode(false);
+
+    return true;
 
 }
 

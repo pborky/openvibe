@@ -777,6 +777,7 @@ void CAcquisitionServerGUI::buttonConfigurePressedCB(::GtkButton* pButton)
 
 	if(m_pDriver->isConfigurable())
 	{
+		setLoadMode(false);
 		m_pDriver->configure();
 	}
 }
@@ -945,7 +946,7 @@ void CAcquisitionServerGUI::saveConfiguration(const char* sFileName)
 
 
 
-void CAcquisitionServerGUI::loadConfiguration(char* sFileToLoad)
+boolean CAcquisitionServerGUI::loadConfiguration(char* sFileToLoad)
 {
 	std::ifstream  l_sConfigurationStream(sFileToLoad);
 	std::map<std::string, std::string> l_mTokenValues;
@@ -969,10 +970,15 @@ void CAcquisitionServerGUI::loadConfiguration(char* sFileToLoad)
 	    }
 	    l_sConfigurationStream.close();
 	}
+	else
+	{
+		m_rKernelContext.getLogManager() << LogLevel_Warning <<"Could not open file\n";
+		return false;
+	}
 
 	//acquisition server settings					---------------------------------------------------------------
 	::GtkComboBox* l_pComboBoxDriver=GTK_COMBO_BOX(gtk_builder_get_object(m_pBuilderInterface, "combobox_driver"));
-	for(int i=0; i<m_vDriver.size(); i++)
+	for(uint32 i=0; i<m_vDriver.size(); i++)
 	{
 		string l_sDriverName=m_vDriver[i]->getName();
 		if (l_sDriverName == l_mTokenValues["AcquisitionServer_LastDriver"])
@@ -1040,28 +1046,36 @@ void CAcquisitionServerGUI::loadConfiguration(char* sFileToLoad)
 	m_pAcquisitionServer->setOversamplingFactor(  l_iOverSamplingFactor);
 	m_pAcquisitionServer->setImpedanceCheckRequest( l_bImpedanceCheckRequest );
 	//----------------------------------------------------------------------
-	loadDriverConfiguration(sFileToLoad);
+	if( !loadDriverConfiguration(sFileToLoad) )
+	{
+		m_rKernelContext.getLogManager() << LogLevel_Warning <<"Driver not configured\n";
+	}
+	return true;
 }
 
-void CAcquisitionServerGUI::loadDriverConfiguration(const char* sFileToLoad)
+boolean CAcquisitionServerGUI::loadDriverConfiguration(const char* sFileToLoad)
 {
 	std::ifstream  l_sConfigurationStream(sFileToLoad);
-	int l_iDriverConfigurationBeginning;
+	int l_iDriverConfigurationBeginning=-1;
 
 	if(l_sConfigurationStream)
 	{
 	    string l_sLine = "";
-	    while (!l_sConfigurationStream.eof())
+	    int l_iDriverConfigurationSeparator = l_sLine.find("# Driver");
+	    while ((!l_sConfigurationStream.eof())&&(l_iDriverConfigurationSeparator==-1))
 	    {
 		  getline(l_sConfigurationStream, l_sLine);
-		  int l_iDriverConfigurationSeparator = l_sLine.find("# Driver");
-		  if (l_iDriverConfigurationSeparator!=-1)
-		  {
-			  l_iDriverConfigurationBeginning = l_sConfigurationStream.tellg();
-		  }
+
+
+		  l_iDriverConfigurationSeparator = l_sLine.find("# Driver");
 	    }
-	    //clear error bit after eof flag is set
-	    l_sConfigurationStream.clear();
+
+	    if (l_iDriverConfigurationSeparator==-1)
+	    {
+		    m_rKernelContext.getLogManager() << LogLevel_Warning <<"Did not find driver settings\n";
+		    return false;
+	    }
+	    l_iDriverConfigurationBeginning = l_sConfigurationStream.tellg();
 
 	    l_sConfigurationStream.seekg(l_iDriverConfigurationBeginning, l_sConfigurationStream.beg);
 	    std::stringstream l_sDriverConfigurationStream;
@@ -1070,13 +1084,21 @@ void CAcquisitionServerGUI::loadDriverConfiguration(const char* sFileToLoad)
 	    OpenViBE::CString l_sDriverConfiguration(l_sDriverConfigurationStream.str().c_str());
 	    m_rKernelContext.getLogManager() << LogLevel_Info << "\n\nConfiguration To Load is \n|"<< l_sDriverConfiguration << "|\n\n";
 	    setDriverConfiguration(l_sDriverConfiguration);
-	    //load mode to 1 to inform the driver it has to lad from the file
+	    //load mode to 1 to inform the driver it has to load from the file
 	    setLoadMode(true);
 	    //configure the driver
 	    m_pDriver->configure();
 
 	    l_sConfigurationStream.close();
+	    return true;
 	}
+	else
+	{
+		m_rKernelContext.getLogManager() << LogLevel_Warning <<"Could not open file\n";
+		return false;
+	}
+
+
 }
 
 void CAcquisitionServerGUI::setLoadMode(boolean bLoadMode)

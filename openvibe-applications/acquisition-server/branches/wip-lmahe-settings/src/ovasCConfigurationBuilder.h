@@ -36,7 +36,7 @@ namespace OpenViBEAcquisitionServer
 		virtual OpenViBE::boolean postConfigure(void);
 		virtual OpenViBE::boolean saveConfiguration(void);
 		virtual OpenViBE::boolean loadConfiguration(void);
-		virtual OpenViBE::boolean CheckLoad(void);
+		virtual OpenViBE::boolean checkLoad(void);
 
 	private:
 

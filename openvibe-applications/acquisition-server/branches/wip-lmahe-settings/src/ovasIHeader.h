@@ -244,9 +244,29 @@ namespace OpenViBEAcquisitionServer
 		 */
 		virtual ~IHeader(void) { }
 
+		//@}
+		/** \name Driver configuration */
+		//@{
+
+		/**
+		 * \brief Set the mode in which the driver will configure itself
+		 * \param bLoadFromFile : true if we load the configuration from a file (we do not display the configuration dialog), false otherwise
+		 */
 		virtual void setLoadMode(OpenViBE::boolean bLoadFromFile) {m_bLoadFromFile = bLoadFromFile;}
+		/**
+		 * \brief Get the mode in which the driver will configure itself
+		 * \return m_bLoadFromFile : true if we load the configuration from a file (we do not display the configuration dialog), false otherwise
+		 */
 		virtual OpenViBE::boolean getLoadMode(void) {return m_bLoadFromFile;}
+		/**
+		 * \brief Set the driver configuration
+		 * \param sNewDriverConfiguration : a string containing the driver settings values
+		 */
 		virtual void setDriverConfiguration(OpenViBE::CString sNewDriverConfiguration) {m_sDriverConfiguration = sNewDriverConfiguration;}
+		/**
+		 * \brief Get the driver configuration
+		 * \return m_sDriverConfiguration : a string containing the driver settings values
+		 */
 		virtual OpenViBE::CString getDriverConfiguration(void) const {return m_sDriverConfiguration;}
 
 	private:

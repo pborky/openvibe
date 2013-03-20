@@ -42,8 +42,8 @@ namespace OpenViBEAcquisitionServer
 		void disconnect(void);
 
 		void saveConfiguration(const char* sFileName);
-		void loadConfiguration(char* sFileToLoad);
-		void loadDriverConfiguration(const char* sFileToLoad);
+		OpenViBE::boolean loadConfiguration(char* sFileToLoad);
+		OpenViBE::boolean loadDriverConfiguration(const char* sFileToLoad);
 		void setLoadMode(OpenViBE::boolean bLoadMode);
 		void setDriverConfiguration(OpenViBE::CString sConfigurationToLoad);
 
