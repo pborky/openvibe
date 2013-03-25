@@ -911,7 +911,8 @@ void CAcquisitionServerGUI::saveConfiguration(const char* sFileName)
 		::fprintf(l_pFile, "AcquisitionServer_NaNReplacementPolicy = %s\n", m_pAcquisitionServer->getNaNReplacementPolicyStr().toASCIIString());
 		::fprintf(l_pFile, "# Path to emotiv SDK\n");
 		::fprintf(l_pFile, "AcquisitionServer_PathToEmotivResearchSDK = %s\n", (const char *)m_rKernelContext.getConfigurationManager().expand("${AcquisitionServer_PathToEmotivResearchSDK}"));
-
+		::fprintf(l_pFile, "\n");
+		::fprintf(l_pFile, "# Plugins Settings\n");
 
 		for (size_t setting_index = 0; setting_index < m_vPluginSettings.size(); ++setting_index)
 		{
@@ -934,6 +935,8 @@ void CAcquisitionServerGUI::saveConfiguration(const char* sFileName)
 				// in the case where no valid type is defined we do nothing
 			}
 		}
+
+		::fprintf(l_pFile, "\n");
 
 		//copy the driver settings from the driver settings file after this
 		OpenViBE::CString l_sDriverConfiguration = m_pDriver->getHeader()->getDriverConfiguration();
@@ -1045,6 +1048,44 @@ boolean CAcquisitionServerGUI::loadConfiguration(char* sFileToLoad)
 	m_pAcquisitionServer->setJitterEstimationCountForDrift( l_iJitterEstimationCountForDrift );
 	m_pAcquisitionServer->setOversamplingFactor(  l_iOverSamplingFactor);
 	m_pAcquisitionServer->setImpedanceCheckRequest( l_bImpedanceCheckRequest );
+
+	// Load plugin settings
+
+	for (size_t setting_index = 0; setting_index < m_vPluginSettings.size(); ++setting_index)
+	{
+		PluginSetting* l_pCurrentSetting = m_vPluginSettings[setting_index].setting_ptr;
+		std::map<std::string, std::string>::iterator l_iIterator;
+		std::string l_sToken(m_vPluginSettings[setting_index].unique_name.toASCIIString());
+		l_iIterator = l_mTokenValues.find( l_sToken );
+		if (l_iIterator != l_mTokenValues.end() )
+		{
+
+
+			if (l_pCurrentSetting->type == OVTK_TypeId_Boolean)
+			{
+				boolean l_bValue = false;
+				if (l_mTokenValues[l_sToken]=="True")
+				{
+					l_bValue = true;
+				}
+				l_pCurrentSetting->value = l_bValue;
+			}
+			else if (l_pCurrentSetting->type == OVTK_TypeId_Integer)
+			{
+				int64 l_i64Value = atoi(l_mTokenValues[l_sToken].c_str() );
+				l_pCurrentSetting->value = l_i64Value;
+			}
+			else if (l_pCurrentSetting->type == OVTK_TypeId_String)
+			{
+				CString l_sValue(l_mTokenValues[l_sToken].c_str());
+				l_pCurrentSetting->value =l_sValue;
+			}
+			else
+			{
+				// in the case where no valid type is defined we do nothing
+			}
+		}
+	}
 	//----------------------------------------------------------------------
 	if( !loadDriverConfiguration(sFileToLoad) )
 	{
