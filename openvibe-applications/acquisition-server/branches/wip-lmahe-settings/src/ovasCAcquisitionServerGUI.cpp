@@ -981,7 +981,7 @@ boolean CAcquisitionServerGUI::loadConfiguration(char* sFileToLoad)
 
 	//acquisition server settings					---------------------------------------------------------------
 	::GtkComboBox* l_pComboBoxDriver=GTK_COMBO_BOX(gtk_builder_get_object(m_pBuilderInterface, "combobox_driver"));
-	for(uint32 i=0; i<m_vDriver.size(); i++)
+	for(size_t i=0; i<m_vDriver.size(); i++)
 	{
 		string l_sDriverName=m_vDriver[i]->getName();
 		if (l_sDriverName == l_mTokenValues["AcquisitionServer_LastDriver"])
@@ -994,14 +994,22 @@ boolean CAcquisitionServerGUI::loadConfiguration(char* sFileToLoad)
 	gtk_spin_button_set_value(l_pSpinButtonConnectionPort, (gdouble)atoi(l_mTokenValues["AcquisitionServer_LastConnectionPort"].c_str() ));
 
 	::GtkComboBox* l_pComboBoxSampleCountPerBuffer=GTK_COMBO_BOX(gtk_builder_get_object(m_pBuilderInterface, "combobox_sample_count_per_sent_block"));
-	for(int i=0; ; i++)
+
+
+	int l_iActive = 0;
+	std::string l_sCurrentSampleCountPerBuffer;
+
+	do
 	{
-		gtk_combo_box_set_active(l_pComboBoxSampleCountPerBuffer, i);
-		if(l_mTokenValues["AcquisitionServer_LastSampleCountPerBuffer"]==gtk_combo_box_get_active_text(l_pComboBoxSampleCountPerBuffer))
-		{
-			break;
-		}
-	}
+		gtk_combo_box_set_active(l_pComboBoxSampleCountPerBuffer, l_iActive);
+		l_sCurrentSampleCountPerBuffer = gtk_combo_box_get_active_text(l_pComboBoxSampleCountPerBuffer);
+		l_iActive++;
+	}while(l_mTokenValues["AcquisitionServer_LastSampleCountPerBuffer"]!=l_sCurrentSampleCountPerBuffer);
+
+
+
+
+
 
 	//acquisition server preferences			--------------------------------------------------------------------------------
 	int l_iDriftToleranceDuration = atoi(l_mTokenValues["AcquisitionServer_DriftToleranceDuration"].c_str());
