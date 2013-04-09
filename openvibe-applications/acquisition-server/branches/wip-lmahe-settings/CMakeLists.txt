@@ -1,8 +1,8 @@
-PROJECT(OpenViBE-acquisition-server)
+PROJECT(openvibe-acquisition-server)
 
-SET(PROJECT_VERSION_MAJOR x)
-SET(PROJECT_VERSION_MINOR x)
-SET(PROJECT_VERSION_PATCH x)
+SET(PROJECT_VERSION_MAJOR ${OV_GLOBAL_VERSION_MAJOR})
+SET(PROJECT_VERSION_MINOR ${OV_GLOBAL_VERSION_MINOR})
+SET(PROJECT_VERSION_PATCH ${OV_GLOBAL_VERSION_PATCH})
 SET(PROJECT_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH})
 
 # The following is required because one of our dependencies hard-links against specific boost libs on Win, so we need to tell the linker the path to them. 
@@ -10,7 +10,7 @@ SET(PROJECT_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_
 INCLUDE("OvAddBoostLinkDir")
 
 FILE(GLOB_RECURSE source_files src/*.cpp src/*.h)
-ADD_EXECUTABLE(${PROJECT_NAME}-dynamic ${source_files})
+ADD_EXECUTABLE(${PROJECT_NAME} ${source_files})
 
 INCLUDE("FindOpenViBE")
 INCLUDE("FindOpenViBEToolkit")
@@ -76,8 +76,8 @@ IF(WIN32)
 
 	IF(PTHREAD_LIB AND WS232_LIB)
 		INCLUDE_DIRECTORIES(${OV_WIN32_DEP_DIR}/pthreads/include)		
-		TARGET_LINK_LIBRARIES(${PROJECT_NAME}-dynamic ${WS232_LIB} )
-		TARGET_LINK_LIBRARIES(${PROJECT_NAME}-dynamic ${PTHREAD_LIB})
+		TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${WS232_LIB} )
+		TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${PTHREAD_LIB})
 	ENDIF(PTHREAD_LIB AND WS232_LIB)
 
 ENDIF(WIN32)
@@ -86,12 +86,12 @@ ENDIF(WIN32)
 # ----------------------
 # Generate launch script
 # ----------------------
-OV_INSTALL_LAUNCH_SCRIPT("ov-acquisition-server")
+OV_INSTALL_LAUNCH_SCRIPT("openvibe-acquisition-server")
 
 # -----------------------------
 # Install files
 # -----------------------------
-INSTALL(TARGETS ${PROJECT_NAME}-dynamic
+INSTALL(TARGETS ${PROJECT_NAME}
 	RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR}
 	LIBRARY DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}
 	ARCHIVE DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR})
