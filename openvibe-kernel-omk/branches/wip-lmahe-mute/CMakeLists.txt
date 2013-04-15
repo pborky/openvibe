@@ -1,18 +1,14 @@
-PROJECT(OpenViBE-kernel)
+PROJECT(openvibe-kernel)
 
-SET(PROJECT_VERSION_MAJOR x)
-SET(PROJECT_VERSION_MINOR x)
-SET(PROJECT_VERSION_PATCH x)
+SET(PROJECT_VERSION_MAJOR ${OV_GLOBAL_VERSION_MAJOR})
+SET(PROJECT_VERSION_MINOR ${OV_GLOBAL_VERSION_MINOR})
+SET(PROJECT_VERSION_PATCH ${OV_GLOBAL_VERSION_PATCH})
 SET(PROJECT_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH})
-
-# The following is required because one of our dependencies hard-links against specific boost libs on Win, so we need to tell the linker the path to them. 
-# Due to CMake, this needs to be done _before_ creating the target.
-INCLUDE("OvAddBoostLinkDir")
 
 FILE(GLOB_RECURSE source_files src/*.cpp src/*.h src/*.inl)
 
-ADD_LIBRARY(${PROJECT_NAME}-dynamic SHARED ${source_files})
-SET_TARGET_PROPERTIES(${PROJECT_NAME}-dynamic PROPERTIES
+ADD_LIBRARY(${PROJECT_NAME} SHARED ${source_files})
+SET_TARGET_PROPERTIES(${PROJECT_NAME} PROPERTIES
 	VERSION ${PROJECT_VERSION}
 	SOVERSION ${PROJECT_VERSION_MAJOR}
 	COMPILE_FLAGS "-DOVK_Exports -DOVK_Shared")
@@ -22,9 +18,10 @@ INCLUDE("FindOpenViBEModuleFS")
 INCLUDE("FindOpenViBEModuleSystem")
 INCLUDE("FindOpenViBEModuleXML")
 INCLUDE("FindThirdPartyGTK")
-INCLUDE("FindThirdPartyOgre3D")
-INCLUDE("FindThirdPartyBoost")
-INCLUDE("FindThirdPartyBoost_FileSystem")
+INCLUDE("FindThirdPartyOgre3D")			# OGRE + OIS included, pulls boost thread
+INCLUDE("FindThirdPartyBoost")			# Using Ogre headers on Win32 causes dependency to Boost thread library
+INCLUDE("FindThirdPartyBoost_Thread")	# Note that this is a potential issue on Windows, as the dependencies/ogre/boost and dependencies/boost are not the same at the time of writing this.
+INCLUDE("FindThirdPartyX11")			# Linux packaging ("lintian") complains if not linked to, NOP on Win32
 
 # ---------------------------------
 # Finds standard library dl
@@ -35,7 +32,7 @@ IF(UNIX)
 	FIND_LIBRARY(LIB_STANDARD_MODULE_DL dl)
 	IF(LIB_STANDARD_MODULE_DL)
 		MESSAGE(STATUS "  Found dl...")
-		TARGET_LINK_LIBRARIES(${PROJECT_NAME}-dynamic ${LIB_STANDARD_MODULE_DL})
+		TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${LIB_STANDARD_MODULE_DL})
 	ELSE(LIB_STANDARD_MODULE_PTHREAD)
 		MESSAGE(STATUS "  FAILED to find dl...")
 	ENDIF(LIB_STANDARD_MODULE_DL)
@@ -50,7 +47,7 @@ IF(UNIX)
 	FIND_LIBRARY(LIB_STANDARD_MODULE_PTHREAD pthread)
 	IF(LIB_STANDARD_MODULE_PTHREAD)
 		MESSAGE(STATUS "  Found pthread...")
-		TARGET_LINK_LIBRARIES(${PROJECT_NAME}-dynamic ${LIB_STANDARD_MODULE_PTHREAD})
+		TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${LIB_STANDARD_MODULE_PTHREAD})
 	ELSE(LIB_STANDARD_MODULE_PTHREAD)
 		MESSAGE(STATUS "  FAILED to find pthread...")
 	ENDIF(LIB_STANDARD_MODULE_PTHREAD)
@@ -60,27 +57,27 @@ ENDIF(UNIX)
 # Target macros
 # Defines target operating system
 # Defines target architecture
-# Defines target compilator
+# Defines target compiler
 # ---------------------------------
 IF(WIN32)
 	ADD_DEFINITIONS(-D_CRT_SECURE_NO_DEPRECATE)
 	ADD_DEFINITIONS(-DTARGET_OS_Windows)
 	ADD_DEFINITIONS(-DTARGET_ARCHITECTURE_i386)
-	ADD_DEFINITIONS(-DTARGET_COMPILATOR_VisualStudio)
+	ADD_DEFINITIONS(-DTARGET_COMPILER_VisualStudio)
 ENDIF(WIN32)
 IF(UNIX)
 	# ADD_DEFINITIONS(-fvisibility=hidden) # This flag should be present... man gcc
 	ADD_DEFINITIONS(-g)
 	ADD_DEFINITIONS(-DTARGET_OS_Linux)
 	ADD_DEFINITIONS(-DTARGET_ARCHITECTURE_i386)
-	ADD_DEFINITIONS(-DTARGET_COMPILATOR_GCC)
+	ADD_DEFINITIONS(-DTARGET_COMPILER_GCC)
 ENDIF(UNIX)
 
 
 # -----------------------------
 # Install files
 # -----------------------------
-INSTALL(TARGETS ${PROJECT_NAME}-dynamic
+INSTALL(TARGETS ${PROJECT_NAME}
 	RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR}
 	LIBRARY DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}
 	ARCHIVE DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR})
