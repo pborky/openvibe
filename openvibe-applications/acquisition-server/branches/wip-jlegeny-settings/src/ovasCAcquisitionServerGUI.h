@@ -50,6 +50,24 @@ namespace OpenViBEAcquisitionServer
 		virtual void comboBoxDriverChanged(::GtkComboBox* pComboBox);
 		virtual void comboBoxSampleCountPerSentBlockChanged(::GtkComboBox* pComboBox);
 
+		/// Callback for save settings
+		virtual void buttonSavePressedCB(::GtkButton* pButton);
+
+		/// Callback for load settings
+		virtual void buttonLoadPressedCB(::GtkButton* pButton);
+
+		/**
+		  * Save current configuration to a file
+		  */
+		void saveConfiguration(const char* sFileName);
+
+		/**
+		  * Load server configuration from a file
+		  *
+		  * @return true if loading was successful, false in case of fail
+		  */
+		OpenViBE::boolean loadConfiguration(char* sFileToLoad);
+
 		class PluginSettingReference
 		{
 			public:
@@ -87,8 +105,19 @@ namespace OpenViBEAcquisitionServer
 		/// registers a new acquisition server plugin, the plugin is activated immediately
 		void registerPlugin(IAcquisitionServerPlugin* plugin);
 
-		/// scans all plugins for settings and puts them into a flat structure easier to handle
+
+		/**
+		  * \brief This function scans all registered plugins for settings.
+		  *
+		  * All of the plugins are inserted into a vector containing the pointer to the actual settings structure
+		  * along with a unique name for settings.
+		  */
 		void scanPluginSettings();
+
+		/**
+		  * Loads plugin settings from the configuration manager stored tokens.
+		  */
+		void configurePluginSettings();
 
 		/// holds references to the plugins' settings for faster access
 		std::vector<PluginSettingReference> m_vPluginSettings;

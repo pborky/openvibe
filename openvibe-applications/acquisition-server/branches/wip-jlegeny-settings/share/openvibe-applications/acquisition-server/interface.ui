@@ -352,6 +352,41 @@
                     <property name="position">3</property>
                   </packing>
                 </child>
+<!-- My save button -->
+                <child>
+                  <object class="GtkButton" id="button_save">
+                    <property name="label">Save</property>
+                    <property name="visible">True</property>
+                    <property name="sensitive">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="receives_default">True</property>
+                    <property name="use_action_appearance">False</property>
+                    <property name="use_stock">True</property>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">False</property>
+                    <property name="position">4</property>
+                  </packing>
+                </child>
+                <!-- My load button -->
+                <child>
+                  <object class="GtkButton" id="button_load">
+                    <property name="label">Load</property>
+                    <property name="visible">True</property>
+                    <property name="sensitive">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="receives_default">True</property>
+                    <property name="use_action_appearance">False</property>
+                    <property name="use_stock">True</property>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">False</property>
+                    <property name="position">5</property>
+                  </packing>
+                </child>
+                <!-- My save and load buttons -->
               </object>
               <packing>
                 <property name="expand">False</property>

@@ -243,46 +243,7 @@ CAcquisitionServer::CAcquisitionServer(const IKernelContext& rKernelContext)
 	ip_ui64BufferDuration.initialize(m_pStreamEncoder->getInputParameter(OVP_GD_Algorithm_MasterAcquisitionStreamEncoder_InputParameterId_BufferDuration));
 	op_pEncodedMemoryBuffer.initialize(m_pStreamEncoder->getOutputParameter(OVP_GD_Algorithm_MasterAcquisitionStreamEncoder_OutputParameterId_EncodedMemoryBuffer));
 
-	CString l_sNaNReplacementPolicy=m_rKernelContext.getConfigurationManager().expand("${AcquisitionServer_NaNReplacementPolicy}");
-	if(l_sNaNReplacementPolicy==CString("Disabled"))
-	{
-		this->setNaNReplacementPolicy(NaNReplacementPolicy_Disabled);
-	}
-	else if(l_sNaNReplacementPolicy==CString("Zero"))
-	{
-		this->setNaNReplacementPolicy(NaNReplacementPolicy_Zero);
-	}
-	else
-	{
-		this->setNaNReplacementPolicy(NaNReplacementPolicy_LastCorrectValue);
-	}
-
-
-	CString l_sDriftCorrectionPolicy=m_rKernelContext.getConfigurationManager().expand("${AcquisitionServer_DriftCorrectionPolicy}");
-	if(l_sDriftCorrectionPolicy==CString("Forced"))
-	{
-		this->setDriftCorrectionPolicy(DriftCorrectionPolicy_Forced);
-	}
-	else if(l_sDriftCorrectionPolicy==CString("Disabled"))
-	{
-		this->setDriftCorrectionPolicy(DriftCorrectionPolicy_Disabled);
-	}
-	else
-	{
-		this->setDriftCorrectionPolicy(DriftCorrectionPolicy_DriverChoice);
-	}
-
-	this->setDriftToleranceDuration(m_rKernelContext.getConfigurationManager().expandAsUInteger("${AcquisitionServer_DriftToleranceDuration}", 5));
-	this->setJitterEstimationCountForDrift(m_rKernelContext.getConfigurationManager().expandAsUInteger("${AcquisitionServer_JitterEstimationCountForDrift}", 128));
-	this->setOversamplingFactor(m_rKernelContext.getConfigurationManager().expandAsUInteger("${AcquisitionServer_OverSamplingFactor}", 1));
-	this->setImpedanceCheckRequest(m_rKernelContext.getConfigurationManager().expandAsBoolean("${AcquisitionServer_CheckImpedance}", false));
-
-	m_ui64StartedDriverSleepDuration=m_rKernelContext.getConfigurationManager().expandAsUInteger("${AcquisitionServer_StartedDriverSleepDuration}", 2);
-	m_ui64StoppedDriverSleepDuration=m_rKernelContext.getConfigurationManager().expandAsUInteger("${AcquisitionServer_StoppedDriverSleepDuration}", 100);
-	m_ui64DriverTimeoutDuration=m_rKernelContext.getConfigurationManager().expandAsUInteger("${AcquisitionServer_DriverTimeoutDuration}", 5000);
-
-
-
+	this->configure();
 
 	m_i64DriftSampleCount=0;
 
@@ -339,6 +300,48 @@ CAcquisitionServer::~CAcquisitionServer(void)
 
 	delete m_pDriverContext;
 	m_pDriverContext=NULL;
+}
+
+void CAcquisitionServer::configure()
+{
+	CString l_sNaNReplacementPolicy=m_rKernelContext.getConfigurationManager().expand("${AcquisitionServer_NaNReplacementPolicy}");
+	if(l_sNaNReplacementPolicy==CString("Disabled"))
+	{
+		this->setNaNReplacementPolicy(NaNReplacementPolicy_Disabled);
+	}
+	else if(l_sNaNReplacementPolicy==CString("Zero"))
+	{
+		this->setNaNReplacementPolicy(NaNReplacementPolicy_Zero);
+	}
+	else
+	{
+		this->setNaNReplacementPolicy(NaNReplacementPolicy_LastCorrectValue);
+	}
+
+
+	CString l_sDriftCorrectionPolicy=m_rKernelContext.getConfigurationManager().expand("${AcquisitionServer_DriftCorrectionPolicy}");
+	if(l_sDriftCorrectionPolicy==CString("Forced"))
+	{
+		this->setDriftCorrectionPolicy(DriftCorrectionPolicy_Forced);
+	}
+	else if(l_sDriftCorrectionPolicy==CString("Disabled"))
+	{
+		this->setDriftCorrectionPolicy(DriftCorrectionPolicy_Disabled);
+	}
+	else
+	{
+		this->setDriftCorrectionPolicy(DriftCorrectionPolicy_DriverChoice);
+	}
+
+	this->setDriftToleranceDuration(m_rKernelContext.getConfigurationManager().expandAsUInteger("${AcquisitionServer_DriftToleranceDuration}", 5));
+	this->setJitterEstimationCountForDrift(m_rKernelContext.getConfigurationManager().expandAsUInteger("${AcquisitionServer_JitterEstimationCountForDrift}", 128));
+	this->setOversamplingFactor(m_rKernelContext.getConfigurationManager().expandAsUInteger("${AcquisitionServer_OverSamplingFactor}", 1));
+	this->setImpedanceCheckRequest(m_rKernelContext.getConfigurationManager().expandAsBoolean("${AcquisitionServer_CheckImpedance}", false));
+
+	m_ui64StartedDriverSleepDuration=m_rKernelContext.getConfigurationManager().expandAsUInteger("${AcquisitionServer_StartedDriverSleepDuration}", 2);
+	m_ui64StoppedDriverSleepDuration=m_rKernelContext.getConfigurationManager().expandAsUInteger("${AcquisitionServer_StoppedDriverSleepDuration}", 100);
+	m_ui64DriverTimeoutDuration=m_rKernelContext.getConfigurationManager().expandAsUInteger("${AcquisitionServer_DriverTimeoutDuration}", 5000);
+
 }
 
 IDriverContext& CAcquisitionServer::getDriverContext(void)

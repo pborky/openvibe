@@ -55,6 +55,9 @@ namespace OpenViBEAcquisitionServer
 		CAcquisitionServer(const OpenViBE::Kernel::IKernelContext& rKernelContext);
 		virtual ~CAcquisitionServer(void);
 
+		/// Loads the configuration of the Acquisition Server from the Configuration Manager
+		void configure();
+
 		virtual OpenViBEAcquisitionServer::IDriverContext& getDriverContext();
 
 		OpenViBE::uint32 getClientCount(void);

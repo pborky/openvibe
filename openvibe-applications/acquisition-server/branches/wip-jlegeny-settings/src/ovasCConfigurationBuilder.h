@@ -36,6 +36,7 @@ namespace OpenViBEAcquisitionServer
 	private:
 
 		CConfigurationBuilder(void);
+		OpenViBE::boolean saveConfiguration(void);
 
 	protected:
 

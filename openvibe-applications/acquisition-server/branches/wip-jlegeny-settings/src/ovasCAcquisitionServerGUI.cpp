@@ -111,6 +111,17 @@ static void combobox_sample_count_per_sent_block_changed_cb(::GtkComboBox* pComb
 	static_cast<CAcquisitionServerGUI*>(pUserData)->comboBoxSampleCountPerSentBlockChanged(pComboBox);
 }
 
+static void button_save_pressed_cb(::GtkButton* pButton, void* pUserData)
+{
+	static_cast<CAcquisitionServerGUI*>(pUserData)->buttonSavePressedCB(pButton);
+}
+
+static void button_load_pressed_cb(::GtkButton* pButton, void* pUserData)
+{
+	static_cast<CAcquisitionServerGUI*>(pUserData)->buttonLoadPressedCB(pButton);
+}
+
+
 //___________________________________________________________________//
 //                                                                   //
 
@@ -184,33 +195,7 @@ CAcquisitionServerGUI::CAcquisitionServerGUI(const IKernelContext& rKernelContex
 	scanPluginSettings();
 
 	// Load plugin settings
-
-	for (size_t setting_index = 0; setting_index < m_vPluginSettings.size(); ++setting_index)
-	{
-		PluginSetting* l_pCurrentSetting = m_vPluginSettings[setting_index].setting_ptr;
-
-		if (m_rKernelContext.getConfigurationManager().lookUpConfigurationTokenIdentifier(m_vPluginSettings[setting_index].unique_name) != OV_UndefinedIdentifier)
-		{
-			CString l_sConfigurationNameExpression = CString("${" + m_vPluginSettings[setting_index].unique_name + "}");
-
-			if (l_pCurrentSetting->type == OVTK_TypeId_Boolean)
-			{
-				l_pCurrentSetting->value = m_rKernelContext.getConfigurationManager().expandAsBoolean(l_sConfigurationNameExpression);
-			}
-			else if (l_pCurrentSetting->type == OVTK_TypeId_Integer)
-			{
-				l_pCurrentSetting->value = m_rKernelContext.getConfigurationManager().expandAsInteger(l_sConfigurationNameExpression);
-			}
-			else if (l_pCurrentSetting->type == OVTK_TypeId_String)
-			{
-				l_pCurrentSetting->value = m_rKernelContext.getConfigurationManager().expand(l_sConfigurationNameExpression);
-			}
-			else
-			{
-				// in the case where no valid type is defined we do nothing
-			}
-		}
-	}
+	configurePluginSettings();
 
 	m_pAcquisitionServerThread=new CAcquisitionServerThread(m_rKernelContext, *this, *m_pAcquisitionServer);
 
@@ -225,52 +210,7 @@ CAcquisitionServerGUI::~CAcquisitionServerGUI(void)
 	m_pAcquisitionServerThread->terminate();
 	m_pThread->join();
 
-	// Saves current configuration
-	FILE* l_pFile=::fopen(m_rKernelContext.getConfigurationManager().expand("${CustomConfigurationApplication}").toASCIIString(), "wt");
-	if(l_pFile)
-	{
-		::fprintf(l_pFile, "# This file is generated\n");
-		::fprintf(l_pFile, "# Do not modify\n");
-		::fprintf(l_pFile, "\n");
-		::fprintf(l_pFile, "# Last settings set in the acquisition server\n");
-		::fprintf(l_pFile, "AcquisitionServer_LastDriver = %s\n", m_pDriver->getName());
-		::fprintf(l_pFile, "AcquisitionServer_LastSampleCountPerBuffer = %i\n", this->getSampleCountPerBuffer());
-		::fprintf(l_pFile, "AcquisitionServer_LastConnectionPort = %i\n", this->getTCPPort());
-		::fprintf(l_pFile, "# Last Preferences set in the acquisition server\n");
-		::fprintf(l_pFile, "AcquisitionServer_DriftCorrectionPolicy = %s\n", m_pAcquisitionServer->getDriftCorrectionPolicyStr().toASCIIString());
-		::fprintf(l_pFile, "AcquisitionServer_JitterEstimationCountForDrift = %llu\n", m_pAcquisitionServer->getJitterEstimationCountForDrift());
-		::fprintf(l_pFile, "AcquisitionServer_DriftToleranceDuration = %llu\n", m_pAcquisitionServer->getDriftToleranceDuration());
-		::fprintf(l_pFile, "AcquisitionServer_OverSamplingFactor = %llu\n", m_pAcquisitionServer->getOversamplingFactor());
-		::fprintf(l_pFile, "AcquisitionServer_CheckImpedance = %s\n", (m_pAcquisitionServer->isImpedanceCheckRequested() ? "True" : "False"));
-		::fprintf(l_pFile, "AcquisitionServer_NaNReplacementPolicy = %s\n", m_pAcquisitionServer->getNaNReplacementPolicyStr().toASCIIString());
-		::fprintf(l_pFile, "# Path to emotiv SDK\n");
-		::fprintf(l_pFile, "AcquisitionServer_PathToEmotivResearchSDK = %s\n", (const char *)m_rKernelContext.getConfigurationManager().expand("${AcquisitionServer_PathToEmotivResearchSDK}"));
-
-		for (size_t setting_index = 0; setting_index < m_vPluginSettings.size(); ++setting_index)
-		{
-			PluginSetting* l_pCurrentSetting = m_vPluginSettings[setting_index].setting_ptr;
-
-			if (l_pCurrentSetting->type == OVTK_TypeId_Boolean)
-			{
-				::fprintf(l_pFile, m_vPluginSettings[setting_index].unique_name + " = %s\n", l_pCurrentSetting->getValue<bool>() ? "True" : "False");
-			}
-			else if (l_pCurrentSetting->type == OVTK_TypeId_Integer)
-			{
-				::fprintf(l_pFile, m_vPluginSettings[setting_index].unique_name + " = %llu\n", l_pCurrentSetting->getValue<int64>());
-			}
-			else if (l_pCurrentSetting->type == OVTK_TypeId_String)
-			{
-				::fprintf(l_pFile, m_vPluginSettings[setting_index].unique_name + " = %s\n", (l_pCurrentSetting->getValue<CString>()).toASCIIString());
-			}
-			else
-			{
-				// in the case where no valid type is defined we do nothing
-			}
-		}
-
-
-		::fclose(l_pFile);
-	}
+	saveConfiguration(m_rKernelContext.getConfigurationManager().expand("${CustomConfigurationApplication}").toASCIIString());
 
 	vector<IDriver*>::iterator itDriver;
 	for(itDriver=m_vDriver.begin(); itDriver!=m_vDriver.end(); itDriver++)
@@ -307,6 +247,10 @@ boolean CAcquisitionServerGUI::initialize(void)
 	g_signal_connect(gtk_builder_get_object(m_pBuilderInterface, "button_stop"),                          "pressed", G_CALLBACK(button_stop_pressed_cb),       this);
 	g_signal_connect(gtk_builder_get_object(m_pBuilderInterface, "combobox_driver"),                      "changed", G_CALLBACK(combobox_driver_changed_cb),   this);
 	g_signal_connect(gtk_builder_get_object(m_pBuilderInterface, "combobox_sample_count_per_sent_block"), "changed", G_CALLBACK(combobox_sample_count_per_sent_block_changed_cb),  this);
+
+	g_signal_connect(gtk_builder_get_object(m_pBuilderInterface, "button_save"),                          "pressed", G_CALLBACK(button_save_pressed_cb),       this);
+	g_signal_connect(gtk_builder_get_object(m_pBuilderInterface, "button_load"),                          "pressed", G_CALLBACK(button_load_pressed_cb),       this);
+
 	gtk_builder_connect_signals(m_pBuilderInterface, NULL);
 
 	::GtkComboBox* l_pComboBoxDriver=GTK_COMBO_BOX(gtk_builder_get_object(m_pBuilderInterface, "combobox_driver"));
@@ -796,12 +740,47 @@ void CAcquisitionServerGUI::buttonPreferencePressedCB(::GtkButton* pButton)
 
 void CAcquisitionServerGUI::buttonConfigurePressedCB(::GtkButton* pButton)
 {
-	m_rKernelContext.getLogManager() << LogLevel_Debug << "buttonConfigurePressedCB\n";
-
 	if(m_pDriver->isConfigurable())
 	{
 		m_pDriver->configure();
 	}
+}
+
+void CAcquisitionServerGUI::buttonSavePressedCB(::GtkButton* pButton)
+{
+	::GtkWidget* l_pWidgetDialogOpen=gtk_file_chooser_dialog_new(
+							  "Select file to open...",
+							  NULL,
+							  GTK_FILE_CHOOSER_ACTION_SAVE,
+							  GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
+							  GTK_STOCK_OPEN, GTK_RESPONSE_ACCEPT,
+							  NULL);
+	// Runs dialog !
+	if(gtk_dialog_run(GTK_DIALOG(l_pWidgetDialogOpen))==GTK_RESPONSE_ACCEPT)
+	{
+		char* l_sFileName=gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(l_pWidgetDialogOpen));
+		saveConfiguration(l_sFileName);
+	}
+	gtk_widget_destroy(l_pWidgetDialogOpen);
+}
+
+void CAcquisitionServerGUI::buttonLoadPressedCB(::GtkButton* pButton)
+{
+	::GtkWidget* l_pWidgetDialogOpen=gtk_file_chooser_dialog_new(
+							  "Select file to open...",
+							  NULL,
+							  GTK_FILE_CHOOSER_ACTION_OPEN,
+							  GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
+							  GTK_STOCK_OPEN, GTK_RESPONSE_ACCEPT,
+							  NULL);
+	// Runs dialog !
+	if(gtk_dialog_run(GTK_DIALOG(l_pWidgetDialogOpen))==GTK_RESPONSE_ACCEPT)
+	{
+		char* l_sFileName=gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(l_pWidgetDialogOpen));
+		loadConfiguration(l_sFileName);
+	}
+	gtk_widget_destroy(l_pWidgetDialogOpen);
+
 }
 
 void CAcquisitionServerGUI::comboBoxDriverChanged(::GtkComboBox* pComboBox)
@@ -833,12 +812,6 @@ void CAcquisitionServerGUI::registerPlugin(IAcquisitionServerPlugin* plugin)
 	}
 }
 
-/**
-  * \brief This function scans all registered plugins for settings.
-  *
-  * All of the plugins are inserted into a vector containing the pointer to the actual settings structure
-  * along with a unique name for settings.
-  */
 void CAcquisitionServerGUI::scanPluginSettings()
 {
 	vector<IAcquisitionServerPlugin*> l_vPlugins = m_pAcquisitionServer->getPlugins();
@@ -865,5 +838,113 @@ void CAcquisitionServerGUI::scanPluginSettings()
 
 	}
 
+}
+
+void CAcquisitionServerGUI::configurePluginSettings()
+{
+	for (size_t setting_index = 0; setting_index < m_vPluginSettings.size(); ++setting_index)
+	{
+		PluginSetting* l_pCurrentSetting = m_vPluginSettings[setting_index].setting_ptr;
+
+		if (m_rKernelContext.getConfigurationManager().lookUpConfigurationTokenIdentifier(m_vPluginSettings[setting_index].unique_name) != OV_UndefinedIdentifier)
+		{
+			CString l_sConfigurationNameExpression = CString("${" + m_vPluginSettings[setting_index].unique_name + "}");
+
+			if (l_pCurrentSetting->type == OVTK_TypeId_Boolean)
+			{
+				l_pCurrentSetting->value = m_rKernelContext.getConfigurationManager().expandAsBoolean(l_sConfigurationNameExpression);
+			}
+			else if (l_pCurrentSetting->type == OVTK_TypeId_Integer)
+			{
+				l_pCurrentSetting->value = m_rKernelContext.getConfigurationManager().expandAsInteger(l_sConfigurationNameExpression);
+			}
+			else if (l_pCurrentSetting->type == OVTK_TypeId_String)
+			{
+				l_pCurrentSetting->value = m_rKernelContext.getConfigurationManager().expand(l_sConfigurationNameExpression);
+			}
+			else
+			{
+				// in the case where no valid type is defined we do nothing
+			}
+		}
+	}
+}
+
+void CAcquisitionServerGUI::saveConfiguration(const char* sFileName)
+{
+	// Saves current configuration
+	FILE* l_pFile=::fopen(sFileName, "wt");
+	m_rKernelContext.getLogManager() << LogLevel_Info << "saving configuration to " << sFileName <<"\n";
+
+	if(l_pFile)
+	{
+		::fprintf(l_pFile, "# This file is generated\n");
+		::fprintf(l_pFile, "# Do not modify\n");
+		::fprintf(l_pFile, "\n");
+		::fprintf(l_pFile, "# Last settings set in the acquisition server\n");
+		::fprintf(l_pFile, "AcquisitionServer_LastDriver = %s\n", m_pDriver->getName());
+		::fprintf(l_pFile, "AcquisitionServer_LastSampleCountPerBuffer = %i\n", this->getSampleCountPerBuffer());
+		::fprintf(l_pFile, "AcquisitionServer_LastConnectionPort = %i\n", this->getTCPPort());
+		::fprintf(l_pFile, "# Last Preferences set in the acquisition server\n");
+		::fprintf(l_pFile, "AcquisitionServer_DriftCorrectionPolicy = %s\n", m_pAcquisitionServer->getDriftCorrectionPolicyStr().toASCIIString());
+		::fprintf(l_pFile, "AcquisitionServer_JitterEstimationCountForDrift = %llu\n", m_pAcquisitionServer->getJitterEstimationCountForDrift());
+		::fprintf(l_pFile, "AcquisitionServer_DriftToleranceDuration = %llu\n", m_pAcquisitionServer->getDriftToleranceDuration());
+		::fprintf(l_pFile, "AcquisitionServer_OverSamplingFactor = %llu\n", m_pAcquisitionServer->getOversamplingFactor());
+		::fprintf(l_pFile, "AcquisitionServer_CheckImpedance = %s\n", (m_pAcquisitionServer->isImpedanceCheckRequested() ? "True" : "False"));
+		::fprintf(l_pFile, "AcquisitionServer_NaNReplacementPolicy = %s\n", m_pAcquisitionServer->getNaNReplacementPolicyStr().toASCIIString());
+		::fprintf(l_pFile, "# Path to emotiv SDK\n");
+		::fprintf(l_pFile, "AcquisitionServer_PathToEmotivResearchSDK = %s\n", (const char *)m_rKernelContext.getConfigurationManager().expand("${AcquisitionServer_PathToEmotivResearchSDK}"));
+		::fprintf(l_pFile, "\n");
+		::fprintf(l_pFile, "# Plugins Settings\n");
+
+		for (size_t setting_index = 0; setting_index < m_vPluginSettings.size(); ++setting_index)
+		{
+			PluginSetting* l_pCurrentSetting = m_vPluginSettings[setting_index].setting_ptr;
+
+			if (l_pCurrentSetting->type == OVTK_TypeId_Boolean)
+			{
+				::fprintf(l_pFile, m_vPluginSettings[setting_index].unique_name + " = %s\n", l_pCurrentSetting->getValue<bool>() ? "True" : "False");
+			}
+			else if (l_pCurrentSetting->type == OVTK_TypeId_Integer)
+			{
+				::fprintf(l_pFile, m_vPluginSettings[setting_index].unique_name + " = %llu\n", l_pCurrentSetting->getValue<int64>());
+			}
+			else if (l_pCurrentSetting->type == OVTK_TypeId_String)
+			{
+				::fprintf(l_pFile, m_vPluginSettings[setting_index].unique_name + " = %s\n", (l_pCurrentSetting->getValue<CString>()).toASCIIString());
+			}
+			else
+			{
+				// in the case where no valid type is defined we do nothing
+			}
+		}
+
+		::fprintf(l_pFile, "\n");
+
+		// TODO: Save the driver settings here
+
+		::fclose(l_pFile);
+	}
 
 }
+
+boolean CAcquisitionServerGUI::loadConfiguration(char* sFileToLoad)
+{
+	m_rKernelContext.getLogManager() << LogLevel_Info << "Loading configuration from " << sFileToLoad <<"\n";
+
+	m_rKernelContext.getConfigurationManager().addConfigurationFromFile(sFileToLoad);
+
+	configurePluginSettings();
+	m_pAcquisitionServer->configure();
+
+	//----------------------------------------------------------------------
+	// TODO: Load the driver settings here
+	/*
+	if( !loadDriverConfiguration(sFileToLoad) )
+	{
+		m_rKernelContext.getLogManager() << LogLevel_Warning <<"Driver not configured\n";
+	}
+	*/
+	return true;
+}
+

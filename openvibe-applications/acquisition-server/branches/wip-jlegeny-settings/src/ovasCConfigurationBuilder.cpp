@@ -7,6 +7,7 @@
 #include <fstream>
 #include <list>
 #include <cstdlib>
+#include <sstream>
 
 #define OVAS_ElectrodeNames_File           OpenViBE::Directories::getDataDir() + "/openvibe-applications/acquisition-server/electrode-names.txt"
 #define OVAS_ConfigureGUIElectrodes_File   OpenViBE::Directories::getDataDir() + "/openvibe-applications/acquisition-server/interface-channel-names.ui"
@@ -224,7 +225,13 @@ boolean CConfigurationBuilder::preConfigure(void)
 
 boolean CConfigurationBuilder::doConfigure(void)
 {
-	return gtk_dialog_run(GTK_DIALOG(m_pDialog))==GTK_RESPONSE_APPLY;
+	boolean l_bResult = false;
+	// TODO: either run a dialog or load the settings from the configuration
+	l_bResult = gtk_dialog_run(GTK_DIALOG(m_pDialog))==GTK_RESPONSE_APPLY;
+	saveConfiguration();
+	// TODO: save the settings if the configuration dialog was run
+
+	return l_bResult;
 }
 
 boolean CConfigurationBuilder::postConfigure(void)
@@ -520,4 +527,57 @@ void CConfigurationBuilder::treeviewApplyChannelNameCB(void)
 	this->buttonApplyChannelNameCB();
 }
 
+boolean CConfigurationBuilder::saveConfiguration(void)
+{
+	std::stringstream l_sConfigurationTokenAndValues;
 
+	//retrieve all objects from the interface
+	GSList * l_oGTKObjectList = gtk_builder_get_objects(m_pBuilderConfigureInterface);
+	for (uint32 i=0; i<g_slist_length(l_oGTKObjectList); i++)
+	{
+		GObject* l_oGTKObject = (GObject*)g_slist_nth_data(l_oGTKObjectList, i);
+		GtkBuildable* l_oGTKBuildable = (GtkBuildable*)l_oGTKObject;
+		string l_sObjectType(G_OBJECT_TYPE_NAME(l_oGTKObject));
+
+		std::string l_sToken;
+
+		if (GTK_IS_BUILDABLE(l_oGTKBuildable))
+		{
+			l_sToken = gtk_buildable_get_name( l_oGTKBuildable );
+
+			if ( l_sObjectType == "GtkEntry" )
+			{
+				l_sConfigurationTokenAndValues << l_sToken << " = " << gtk_entry_get_text((GtkEntry*)l_oGTKObject) <<"\n";
+			}
+			else if ( l_sObjectType == "GtkSpinButton" )
+			{
+				l_sConfigurationTokenAndValues << l_sToken << " = " << gtk_spin_button_get_value((GtkSpinButton*)l_oGTKObject) <<"\n";
+			}
+			else if ( l_sObjectType == "GtkToggleButton" || l_sObjectType == "GtkCheckButton")
+			{
+				l_sConfigurationTokenAndValues << l_sToken << " = " << gtk_toggle_button_get_active((GtkToggleButton*)l_oGTKObject) <<"\n";
+			}
+			else if ( l_sObjectType == "GtkComboBox" )
+			{
+				l_sConfigurationTokenAndValues << l_sToken << " = " << gtk_combo_box_get_active((GtkComboBox*)l_oGTKObject) <<"\n";
+			}
+			else
+			{
+				std::cout << "Unknown type : " << l_sObjectType << std::endl;
+			}
+
+		}
+	}
+	g_slist_free(l_oGTKObjectList);
+
+	std::stringstream l_ssDriverConfiguration;
+	l_ssDriverConfiguration<<"\n# Driver settings\n";
+	l_ssDriverConfiguration<<l_sConfigurationTokenAndValues.str();
+	//l_ssDriverConfiguration<<m_sChannelConfiguration.str();
+
+	OpenViBE::CString l_soDriverConfiguration(l_ssDriverConfiguration.str().c_str());
+
+	//m_pDriverContext->setDriverConfiguration(l_soDriverConfiguration);
+	std::cout<<"setDriverConf to "<< l_soDriverConfiguration <<endl;
+	return true;
+}
