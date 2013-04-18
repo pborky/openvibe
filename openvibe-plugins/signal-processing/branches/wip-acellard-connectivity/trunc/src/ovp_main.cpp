@@ -1,5 +1,7 @@
 #include "algorithms/basic/ovpCMatrixAverage.h"
 #include "algorithms/epoching/ovpCAlgorithmStimulationBasedEpoching.h"
+#include "ovpCHilbertTransform.h"
+//#include "algorithms/Connectivity/ovpCAlgorithmPhaseLockingValue.h"
 //#include "algorithms/filters/ovpCApplySpatialFilter.h"
 
 #include "box-algorithms/basic/ovpCBoxAlgorithmChannelRename.h"
@@ -105,7 +107,8 @@ OVP_Declare_Begin()
 	OVP_Declare_New(OpenViBEPlugins::SignalProcessing::CBoxAlgorithmFrequencyBandSelectorDesc)
 	OVP_Declare_New(OpenViBEPlugins::SignalProcessing::CBoxAlgorithmSpectrumAverageDesc)
 
-	OVP_Declare_New(OpenViBEPlugins::SignalProcessingConnectivity::CBoxAlgorithmConnectivityMeasureDesc);
+	OVP_Declare_New(OpenViBEPlugins::SignalProcessing::CBoxAlgorithmConnectivityMeasureDesc);
+	OVP_Declare_New(OpenViBEPlugins::SignalProcessing::CAlgorithmHilbertTransformDesc);
 
 #if 1
 	OVP_Declare_New(OpenViBEPlugins::SignalProcessing::CAlgoUnivariateStatisticDesc);
