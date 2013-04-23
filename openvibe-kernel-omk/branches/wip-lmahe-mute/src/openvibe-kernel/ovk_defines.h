@@ -150,7 +150,7 @@
 #elif defined TARGET_COMPILER_VisualStudio
  #define OVK_COMPILER_VisualStudio
 #else
- #warning "No target compilator defined !"
+ #warning "No target compiler defined !"
 #endif
 
 //___________________________________________________________________//

@@ -220,19 +220,15 @@ void CBoxProxy::updateSize(::GtkWidget* pWidget, const char* sText, int* pXSize,
 
 boolean CBoxProxy::getMute() const
 {
-    if(m_pConstBox)
+    if(m_pConstBox && m_pConstBox->hasAttribute(OV_AttributeId_Box_Muted))
     {
-        if(m_pConstBox->hasAttribute(OV_AttributeId_Box_Muted))
-        {
-            boolean retval = false;
-            CString l_sIsMuted = m_pConstBox->getAttributeValue(OV_AttributeId_Box_Muted);
-            if ( l_sIsMuted==CString("true") )
-                retval = true;
-            return retval;
-        }
-        else
-            return false;//box not active by default
+         boolean retval = false;
+         CString l_sIsMuted = m_pConstBox->getAttributeValue(OV_AttributeId_Box_Muted);
+         if ( l_sIsMuted==CString("true") )
+             retval = true;
+         return retval;
     }
+    return false; //box not muted by default
 }
 
 void CBoxProxy::setMute(boolean bIsMute)

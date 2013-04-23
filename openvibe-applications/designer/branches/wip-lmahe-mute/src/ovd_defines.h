@@ -176,7 +176,7 @@ namespace OpenViBEDesigner
 #elif defined TARGET_COMPILER_VisualStudio
  #define OVD_COMPILER_VisualStudio
 #else
- #warning "No target compilator defined !"
+ #warning "No target compiler defined !"
 #endif
 
 //___________________________________________________________________//
