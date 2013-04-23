@@ -1166,9 +1166,9 @@ int go(int argc, char ** argv)
 		cout<<"[  INF  ] Created kernel loader"<<endl;
 		CString m_sError;
 #ifdef OVD_OS_Windows
-		if(!l_pKernelLoader->load("../lib/OpenViBE-kernel-dynamic.dll", &m_sError))
+		if(!l_pKernelLoader->load("../lib/openvibe-kernel.dll", &m_sError))
 #else
-		if(!l_pKernelLoader->load("../lib/libOpenViBE-kernel-dynamic.so", &m_sError))
+		if(!l_pKernelLoader->load("../lib/libopenvibe-kernel.so", &m_sError))
 #endif
 		{
 				cout<<"[ FAILED ] Error loading kernel ("<<m_sError<<")"<<endl;
@@ -1214,9 +1214,9 @@ int go(int argc, char ** argv)
 #endif
 
 					IPluginManager& l_rPluginManager=l_pKernel->getContext()->getPluginManager();
-					l_rPluginManager.addPluginsFromFiles("../lib/libOpenViBE-plugins-*.so");
+					l_rPluginManager.addPluginsFromFiles("../lib/libopenvibe-plugins-*.so");
 					// l_rPluginManager.addPluginsFromFiles("../lib/libOpenViBE-*.so");
-					l_rPluginManager.addPluginsFromFiles("../lib/OpenViBE-plugins-*.dll");
+					l_rPluginManager.addPluginsFromFiles("../lib/openvibe-plugins-*.dll");
 					// l_rPluginManager.addPluginsFromFiles("../lib/OpenViBE-*.dll");
 
 					gtk_init(&g_argc, &g_argv);

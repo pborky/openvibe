@@ -421,9 +421,9 @@ int go(int argc, char ** argv)
 	cout<<"[  INF  ] Created kernel loader, trying to load kernel module"<<"\n";
 	CString m_sError;
 #if defined OVD_OS_Windows
-	if(!l_oKernelLoader.load(OpenViBE::Directories::getLibDir() + "/OpenViBE-kernel-dynamic.dll", &m_sError))
+	if(!l_oKernelLoader.load(OpenViBE::Directories::getLibDir() + "/openvibe-kernel.dll", &m_sError))
 #else
-	if(!l_oKernelLoader.load(OpenViBE::Directories::getLibDir() + "/libOpenViBE-kernel-dynamic.so", &m_sError))
+	if(!l_oKernelLoader.load(OpenViBE::Directories::getLibDir() + "/libopenvibe-kernel.so", &m_sError))
 #endif
 	{
 			cout<<"[ FAILED ] Error loading kernel ("<<m_sError<<")"<<"\n";

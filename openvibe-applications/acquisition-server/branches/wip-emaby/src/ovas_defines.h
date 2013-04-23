@@ -57,14 +57,14 @@
 //___________________________________________________________________//
 //                                                                   //
 
-// #define OVAS_COMPILATOR_GCC
-// #define OVAS_COMPILATOR_VisualStudio
-// #define OVAS_COMPILATOR_
+// #define OVAS_COMPILER_GCC
+// #define OVAS_COMPILER_VisualStudio
+// #define OVAS_COMPILER_
 
-#if defined TARGET_COMPILATOR_GCC
- #define OVAS_COMPILATOR_GCC
-#elif defined TARGET_COMPILATOR_VisualStudio
- #define OVAS_COMPILATOR_VisualStudio
+#if defined TARGET_COMPILER_GCC
+ #define OVAS_COMPILER_GCC
+#elif defined TARGET_COMPILER_VisualStudio
+ #define OVAS_COMPILER_VisualStudio
 #else
  #warning "No target compilator defined !"
 #endif
