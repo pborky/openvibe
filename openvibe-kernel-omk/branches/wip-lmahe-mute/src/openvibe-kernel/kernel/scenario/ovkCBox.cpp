@@ -174,6 +174,15 @@ boolean CBox::initializeFromAlgorithmClassIdentifier(
 		this->addAttribute(OV_AttributeId_Box_InitialPrototypeHashValue, this->getPluginManager().getPluginObjectHashValue(rAlgorithmClassIdentifier).toString());
 	}
 
+    if(this->hasAttribute(OV_AttributeId_Box_Muted))
+    {
+        this->getLogManager() << LogLevel_Trace << "Muted attribute is"<< this->getAttributeValue(OV_AttributeId_Box_Muted) <<"\n";
+    }
+    else
+    {
+        this->addAttribute(OV_AttributeId_Box_Muted, "false");
+    }
+
 	this->enableNotification();
 
 	this->notify(BoxModification_Initialized);

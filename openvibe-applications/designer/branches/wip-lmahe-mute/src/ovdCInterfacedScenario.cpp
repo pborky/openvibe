@@ -460,11 +460,8 @@ void CInterfacedScenario::redraw(IBox& rBox)
 	boolean l_bUpToDate  =l_bCanCreate ?  l_oBoxProxy.isUpToDate() : true;
 	boolean l_bDeprecated=l_bCanCreate && l_oBoxProxy.isDeprecated();
 	boolean l_bUnstable  =l_bCanCreate && l_oBoxProxy.isUnstable();
-    boolean l_bMuted = false;
-    if( rBox.getAttributeValue(OV_AttributeId_Box_Muted)==CString("true") )
-    {
-        l_bMuted = true;
-    }
+    boolean l_bMuted = l_oBoxProxy.getMute();
+
 	if(!this->isLocked() || !m_bDebugCPUUsage)
 	{
 		if(m_vCurrentObject[rBox.getIdentifier()])
@@ -2247,7 +2244,7 @@ void CInterfacedScenario::deleteSelection(void)
 
 void CInterfacedScenario::muteSelection(void)
 {
-    m_rKernelContext.getLogManager() << LogLevel_Fatal << "muteSelection\n";
+    m_rKernelContext.getLogManager() << LogLevel_Trace << "muteSelection\n";
 
     map<CIdentifier, boolean>::const_iterator i;
     for(i=m_vCurrentObject.begin(); i!=m_vCurrentObject.end(); i++)
@@ -2502,9 +2499,14 @@ void CInterfacedScenario::contextMenuScenarioAboutCB(void)
 
 void CInterfacedScenario::contextMenuBoxMuteCB(IBox& rBox)
 {
-    m_rKernelContext.getLogManager() << LogLevel_Fatal << "contextMenuBoxMuteCB\n";
-    CString l_sIsMuted;
+    m_rKernelContext.getLogManager() << LogLevel_Trace << "contextMenuBoxMuteCB\n";
 
+    //two constructor for the BoxProxy
+    //if I use the first one, I can not use setMute and have to use l_oAttributeHandler.setAttributeValue<bool>
+
+    CBoxProxy l_oBoxProxy(m_rKernelContext, rBox);
+    TAttributeHandler l_oAttributeHandler(rBox);
+    //CBoxProxy l_oBoxProxy(m_rKernelContext, m_rScenario, rBox.getIdentifier() );
 
     if(!rBox.hasAttribute(OV_AttributeId_Box_Muted))
     {
@@ -2512,15 +2514,15 @@ void CInterfacedScenario::contextMenuBoxMuteCB(IBox& rBox)
     }
     else
     {
-        l_sIsMuted = rBox.getAttributeValue(OV_AttributeId_Box_Muted);
-        if( l_sIsMuted==CString("true") )
-        {
-            rBox.setAttributeValue(OV_AttributeId_Box_Muted, "false");
-        }
-        if( l_sIsMuted==CString("false") )
-        {
-            rBox.setAttributeValue(OV_AttributeId_Box_Muted, "true");
-        }
+        //l_sIsMuted = rBox.getAttributeValue(OV_AttributeId_Box_Muted);
+        bool l_bIsmuted = l_oBoxProxy.getMute();
+        boolean l_bNewValue = !l_bIsmuted;
+
+        m_rKernelContext.getLogManager() << LogLevel_Debug << "was " <<  l_bIsmuted <<"\n";
+        //l_oBoxProxy.setMute( l_bNewValue );
+        l_oAttributeHandler.setAttributeValue<bool>(OV_AttributeId_Box_Muted, l_bNewValue);
+
+
     }
 
     // find a way to remove visualisation widget from window manager

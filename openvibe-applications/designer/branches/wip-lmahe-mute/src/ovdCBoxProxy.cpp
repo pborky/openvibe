@@ -222,28 +222,26 @@ boolean CBoxProxy::getMute() const
 {
     if(m_pConstBox && m_pConstBox->hasAttribute(OV_AttributeId_Box_Muted))
     {
-         boolean retval = false;
-         CString l_sIsMuted = m_pConstBox->getAttributeValue(OV_AttributeId_Box_Muted);
-         if ( l_sIsMuted==CString("true") )
-             retval = true;
-         return retval;
+        TAttributeHandler l_oAttributeHandler(*m_pConstBox);
+        if(l_oAttributeHandler.hasAttribute(OV_AttributeId_Box_Muted))
+        {
+            return l_oAttributeHandler.getAttributeValue<bool>(OV_AttributeId_Box_Muted);
+        }
+        return false;//box not muted by default
     }
     return false; //box not muted by default
 }
 
 void CBoxProxy::setMute(boolean bIsMute)
 {
+    //depending on the constructor, we may have m_pConstBox but not p_pBox
+    //could use a const_cast though
     if(m_pBox)
     {
-        if(m_pBox->hasAttribute(OV_AttributeId_Box_Muted))
+        TAttributeHandler l_oAttributeHandler(*m_pBox);
+        if(l_oAttributeHandler.hasAttribute(OV_AttributeId_Box_Muted))
         {
-            CString l_sValue("");
-            if(bIsMute)
-                l_sValue+"true";
-            else
-                l_sValue+"false";
-            m_pBox->setAttributeValue(OV_AttributeId_Box_Muted, l_sValue);
+            l_oAttributeHandler.setAttributeValue<bool>(OV_AttributeId_Box_Muted, (bool)bIsMute);
         }
     }
-
 }
