@@ -84,10 +84,12 @@
 #define OVP_TypeId_DifferentialIntegralOperation_Differential OpenViBE::CIdentifier(0x8EEF4E01, 0x1F9823C2)
 #define OVP_TypeId_DifferentialIntegralOperation_Integral     OpenViBE::CIdentifier(0x44269C45, 0x77988564)
 
+#define OVP_ClassId_BoxAlgorithm_ConnectivityMeasure 					OpenViBE::CIdentifier(0x8E3A1AEF, 0x7CACD368)
+#define OVP_ClassId_BoxAlgorithm_ConnectivityMeasureDesc 				OpenViBE::CIdentifier(0xA20B0A40, 0x1A92D645)
+#define OVP_TypeId_ConnectivityAlgorithm								OpenViBE::CIdentifier(0xDC90C94B, 0xF82AD423)
+#define OVP_TypeId_ConnectivityAlgorithm_SPhaseLockingValue     		OpenViBE::CIdentifier(0xADB79C8A, 0xF5B58F88)
+#define OVP_TypeId_ConnectivityAlgorithm_MagnitudeSquaredCoherence      OpenViBE::CIdentifier(0x5BAB50C3, 0x3A0E7D20)
 /*
-#define OVP_ClassId_BoxAlgorithm_ConnectivityMeasure 		OpenViBE::CIdentifier(0xE7D7475D, 0xD64A9192)
-#define OVP_ClassId_BoxAlgorithm_ConnectivityMeasureDesc 	OpenViBE::CIdentifier(0xA157593D, 0x8B5275B8)
-
 #define OVP_ClassId_Algorithm_PhaseLockingValue						OpenViBE::CIdentifier(0x344B79DE, 0x89EAAABB)
 #define OVP_ClassId_Algorithm_PhaseLockingValueDesc					OpenViBE::CIdentifier(0x8CAB236A, 0xA789800D)
 #define OVP_Algorithm_PhaseLockingValue_InputParameterId_Matrix		OpenViBE::CIdentifier(0xD11D5B9C, 0x006D9855)
@@ -141,13 +143,16 @@
 
 //___________________________________________________________________//
 //                                                                   //
-// Gloabal defines                                                   //
+// Global defines                                                   //
 //___________________________________________________________________//
 //                                                                   //
 
 #ifdef TARGET_HAS_ThirdPartyOpenViBEPluginsGlobalDefines
  #include "ovp_global_defines.h"
 #endif // TARGET_HAS_ThirdPartyOpenViBEPluginsGlobalDefines
+
+
+#define OVP_Value_CoupledStringSeparator                                '-'
 
 //___________________________________________________________________//
 //                                                                   //

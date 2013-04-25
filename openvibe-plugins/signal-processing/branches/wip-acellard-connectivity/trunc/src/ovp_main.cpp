@@ -1,6 +1,5 @@
 #include "algorithms/basic/ovpCMatrixAverage.h"
 #include "algorithms/epoching/ovpCAlgorithmStimulationBasedEpoching.h"
-#include "ovpCHilbertTransform.h"
 //#include "algorithms/Connectivity/ovpCAlgorithmPhaseLockingValue.h"
 //#include "algorithms/filters/ovpCApplySpatialFilter.h"
 
@@ -35,6 +34,8 @@
 #include "ovpCBandFrequencyAverage.h"
 #include "ovpCEpoching.h"
 #include "ovpCSteadyStateFrequencyComparison.h"
+
+#include "ovpCHilbertTransform.h"
 
 #if 1
 #include "ovpCAlgorithmUnivariateStatistics.h"
@@ -72,6 +73,11 @@ OVP_Declare_Begin()
 	rPluginModuleContext.getTypeManager().registerEnumerationEntry(OVP_TypeId_DifferentialIntegralOperation, "Differential", OVP_TypeId_DifferentialIntegralOperation_Differential.toUInteger());
 	rPluginModuleContext.getTypeManager().registerEnumerationEntry(OVP_TypeId_DifferentialIntegralOperation, "Integral",     OVP_TypeId_DifferentialIntegralOperation_Integral.toUInteger());
 
+	rPluginModuleContext.getTypeManager().registerEnumerationType (OVP_TypeId_ConnectivityAlgorithm, "Connectivity measure method");
+	rPluginModuleContext.getTypeManager().registerEnumerationEntry (OVP_TypeId_ConnectivityAlgorithm, "S-Phase Locking Value", OVP_TypeId_ConnectivityAlgorithm_SPhaseLockingValue.toUInteger());
+	rPluginModuleContext.getTypeManager().registerEnumerationEntry (OVP_TypeId_ConnectivityAlgorithm, "Magnitude squared coherence", OVP_TypeId_ConnectivityAlgorithm_MagnitudeSquaredCoherence.toUInteger());
+
+
 	OVP_Declare_New(OpenViBEPlugins::SignalProcessing::CTimeBasedEpochingDesc);
 
 	OVP_Declare_New(OpenViBEPlugins::SignalProcessing::CMatrixAverageDesc)
@@ -107,8 +113,12 @@ OVP_Declare_Begin()
 	OVP_Declare_New(OpenViBEPlugins::SignalProcessing::CBoxAlgorithmFrequencyBandSelectorDesc)
 	OVP_Declare_New(OpenViBEPlugins::SignalProcessing::CBoxAlgorithmSpectrumAverageDesc)
 
+#ifdef __OpenViBEPlugins_BoxAlgorithm_ConnectivityMeasure_H__
 	OVP_Declare_New(OpenViBEPlugins::SignalProcessing::CBoxAlgorithmConnectivityMeasureDesc);
+#endif
+//#ifndef __OpenViBEPlugins_BoxAlgorithm_ConnectivityMeasure_H__
 	OVP_Declare_New(OpenViBEPlugins::SignalProcessing::CAlgorithmHilbertTransformDesc);
+
 
 #if 1
 	OVP_Declare_New(OpenViBEPlugins::SignalProcessing::CAlgoUnivariateStatisticDesc);

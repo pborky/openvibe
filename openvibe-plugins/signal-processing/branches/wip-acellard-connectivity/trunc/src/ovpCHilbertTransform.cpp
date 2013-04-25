@@ -1,14 +1,9 @@
-/*
- * HilbertTransform.cpp
- *
- *  Created on: Apr 12, 2013
- *      Author: ac-inria
- */
-
 #if defined(TARGET_HAS_ThirdPartyEIGEN)
 
-#include "ovpCAlgorithmPhaseLockingValue.h"
+#include "ovpCHilbertTransform.h"
 #include <complex>
+#include <Eigen/Dense>
+#include <unsupported/Eigen/FFT>
 
 using namespace OpenViBE;
 using namespace OpenViBE::Kernel;
@@ -31,19 +26,23 @@ boolean CAlgorithmHilbertTransform::initialize(void)
 
 boolean CAlgorithmHilbertTransform::uninitialize(void)
 {
-	op_pMatrix.uninitialize();
+	op_pEnvelopeMatrix.uninitialize();
+	op_pPhaseMatrix.uninitialize();
 	ip_pMatrix.uninitialize();
 	return true;
 }
 
 boolean CAlgorithmHilbertTransform::process(void)
 {
-	int l_ui32ChannelCount = ip_pMatrix->getDimensionSize(0);
-	int l_ui32SamplesPerChannel = ip_pMatrix->getDimensionSize(1);
+
+	uint32 l_ui32ChannelCount = ip_pMatrix->getDimensionSize(0);
+	uint32 l_ui32SamplesPerChannel = ip_pMatrix->getDimensionSize(1);
 
 	IMatrix* l_pInputMatrix = ip_pMatrix;
 	IMatrix* l_pOutputEnvelopeMatrix = op_pEnvelopeMatrix;
 	IMatrix* l_pOutputPhaseMatrix = op_pPhaseMatrix;
+
+	FFT< double, internal::kissfft_impl<double > > fft;
 
 	if(this->isInputTriggerActive(OVP_Algorithm_HilbertTransform_InputTriggerId_Process))
 	{
@@ -51,8 +50,8 @@ boolean CAlgorithmHilbertTransform::process(void)
 		for(uint32 channel=0; channel<l_ui32ChannelCount; channel++)
 		{
 			//Initialization of buffer vectors
-			m_vecXcdSignalBuffer = RowVectorXcd::Zero(l_ui32SamplesPerChannel)
-			m_vecXcdSignalFourier = RowVectorXcd::Zero(l_ui32SamplesPerChannel)
+			m_vecXcdSignalBuffer = RowVectorXcd::Zero(l_ui32SamplesPerChannel);
+			m_vecXcdSignalFourier = RowVectorXcd::Zero(l_ui32SamplesPerChannel);
 
 			//Initialization of vector h used to compute analytic signal
 			m_vecXdHilbert.resize(l_ui32SamplesPerChannel);
@@ -60,11 +59,11 @@ boolean CAlgorithmHilbertTransform::process(void)
 			if(l_ui32SamplesPerChannel%2 == 0)
 			{
 				m_vecXdHilbert(l_ui32SamplesPerChannel/2) = 1.0;
-				for(unint32 i=1; i<l_ui32SamplesPerChannel/2; i++)
+				for(uint32 i=1; i<l_ui32SamplesPerChannel/2; i++)
 				{
 					m_vecXdHilbert(i) = 2.0;
 				}
-				for(unint32 i=(l_ui32SamplesPerChannel/2)+1; i<l_ui32SamplesPerChannel; i++)
+				for(uint32 i=(l_ui32SamplesPerChannel/2)+1; i<l_ui32SamplesPerChannel; i++)
 				{
 					m_vecXdHilbert(i) = 0.0;
 				}
@@ -72,11 +71,11 @@ boolean CAlgorithmHilbertTransform::process(void)
 			else
 			{
 				m_vecXdHilbert((l_ui32SamplesPerChannel/2)+1) = 1.0;
-				for(unint32 i=1; i<(l_ui32SamplesPerChannel/2)+1; i++)
+				for(uint32 i=1; i<(l_ui32SamplesPerChannel/2)+1; i++)
 				{
 					m_vecXdHilbert(i) = 2.0;
 				}
-					for(unint32 i=(l_ui32SamplesPerChannel/2)+2; i<l_ui32SamplesPerChannel; i++)
+					for(uint32 i=(l_ui32SamplesPerChannel/2)+2; i<l_ui32SamplesPerChannel; i++)
 				{
 					m_vecXdHilbert(i) = 0.0;
 				}
@@ -90,13 +89,13 @@ boolean CAlgorithmHilbertTransform::process(void)
 			}
 
 			//Fast Fourier Transform of input signal
-			fwd(m_vecXcdSignalFourier, m_vecXcdSignalBuffer);
+			fft.fwd(m_vecXcdSignalFourier, m_vecXcdSignalBuffer);
 
 			//Apply Hilbert transform by element-wise multiplying fft vector by h
 			m_vecXcdSignalFourier = m_vecXcdSignalFourier * m_vecXdHilbert;
 
 			//Inverse Fast Fourier transform
-			inv(m_vecXcdSignalBuffer, m_vecXcdSignalFourier); //m_vecXcdSignalBuffer is now the analytical signal of the initial input signal
+			fft.inv(m_vecXcdSignalBuffer, m_vecXcdSignalFourier); //m_vecXcdSignalBuffer is now the analytical signal of the initial input signal
 
 			//Compute envelope and phase and pass it to the corresponding output
 			for(uint32 samples=0; samples<l_ui32SamplesPerChannel;samples++)
@@ -107,6 +106,7 @@ boolean CAlgorithmHilbertTransform::process(void)
 
 		}
 	}
+	return true;
 }
 
 #endif //TARGET_HAS_ThirdPartyEIGEN

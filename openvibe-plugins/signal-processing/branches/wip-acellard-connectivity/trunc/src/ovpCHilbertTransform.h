@@ -1,18 +1,12 @@
-/*
- * HilbertTransform.h
- *
- *  Created on: Apr 12, 2013
- *      Author: ac-inria
- */
+#if defined(TARGET_HAS_ThirdPartyEIGEN)
+
 #ifndef __OpenViBEPlugins_Algorithm_HilbertTransform_H__
 #define __OpenViBEPlugins_Algorithm_HilbertTransform_H__
 
-#if defined(TARGET_HAS_ThirdPartyEIGEN)
-
-
-#include "../../ovp_defines.h"
+#include "ovp_defines.h"
 #include <openvibe/ov_all.h>
 #include <openvibe-toolkit/ovtk_all.h>
+#include <Eigen/Dense>
 #include <unsupported/Eigen/FFT>
 
 
@@ -86,4 +80,3 @@ namespace OpenViBEPlugins
 
 #endif //__OpenViBEPlugins_Algorithm_HilbertTransform_H__
 #endif //TARGET_HAS_ThirdPartyEIGEN
-
