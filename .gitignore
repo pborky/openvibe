@@ -55,6 +55,4 @@ scripts/ov-ssvep-demo-training.sh
 scripts/ov-vr-demo-handball.sh
 scripts/ov-vr-demo-tie-fighter.sh
 scripts/ov-vrpn-simulator.sh
-scripts/linux-init_env_command
-scripts/linux-dependencies
 scripts/software
