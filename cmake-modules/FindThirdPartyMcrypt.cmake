@@ -3,7 +3,10 @@
 # Mcrypt_INCLUDE_DIR, where to find Mcrypt headers
 # Mcrypt_LIBS, Mcrypt libraries
 # Mcrypt_FOUND, If false, do not try to use Mcrypt
- 
+IF(UNIX)
+
+
+
 find_path(Mcrypt_INCLUDE_DIR mcrypt.h PATHS
     /usr/local/include
     /opt/local/include
@@ -24,16 +27,22 @@ endif ()
  
 if (Mcrypt_FOUND)
   if (NOT Mcrypt_FIND_QUIETLY)
-    message(STATUS "Found mcrypt: ${Mcrypt_LIBS}")
+    message(STATUS "  Found mcrypt ....")
+    MESSAGE(STATUS "    [  OK  ] Third party lib ${Mcrypt_LIBS}")
+    MESSAGE(STATUS "    [  OK  ] Third party header ${Mcrypt_INCLUDE_DIR}")
   endif ()
 else ()
-  if (Mcrypt_FIND_REQUIRED)
-      message(FATAL_ERROR "Could NOT find mcrypt library.")
-  endif ()
-  message(STATUS "mcrypt NOT found.")
+  message(STATUS "  FAILED to find lib mcrypt.")
 endif ()
  
 mark_as_advanced(
     Mcrypt_LIB
     Mcrypt_INCLUDE_DIR
   )
+
+
+else(UNIX)
+   MESSAGE(STATUS "  FAILED to find lib Mcrypt on your platform (you should write cmake module).")    
+endif(UNIX)
+
+

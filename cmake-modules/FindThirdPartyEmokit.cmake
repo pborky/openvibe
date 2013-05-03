@@ -1,41 +1,52 @@
 
 IF(UNIX)
 
-  FIND_PATH(EMOKIT_INCLUDE_DIR emokit/emokit.h PATHS
-      /usr/local/include
-      /opt/local/include
-      /usr/include
-    )
+  FIND_PATH(EMOKIT_INCLUDE_DIR 
+    NAMES emokit/emokit.h 
+    PATHS ${OV_CUSTOM_DEPENDENCIES_PATH}/include)
 
-  FIND_LIBRARY(EMOKIT_LIB NAMES emokit PATHS /usr/local/lib /opt/local/lib /usr/lib64)
+  FIND_LIBRARY(EMOKIT_LIB 
+    NAMES emokit 
+    PATHS ${OV_CUSTOM_DEPENDENCIES_PATH}/lib)
 
   IF(EMOKIT_LIB AND EMOKIT_INCLUDE_DIR)
-    MESSAGE(STATUS "  Found Emokit...")
 
     INCLUDE("FindThirdPartyLibusb-1.0")
     INCLUDE("FindThirdPartyMcrypt")
+    INCLUDE("FindThirdPartyHIDAPI")
+
+    MESSAGE(STATUS "  Found Emokit...")
 
     IF(LIBUSB_1_FOUND)
       IF(Mcrypt_FOUND)
-        INCLUDE_DIRECTORIES(${LIBUSB_1_INCLUDE_DIRS})
-        LIST(APPEND LIBEPOC_REQUIRED_LIBS ${LIBUSB_1_LIBRARIES})
+        IF(HIDAPI_FOUND)
+          MESSAGE(STATUS "    [  OK  ] Third party lib ${EMOKIT_LIB}") 
+          MESSAGE(STATUS "    [  OK  ] Third party header ${EMOKIT_INCLUDE_DIR}")
+
+          INCLUDE_DIRECTORIES(${LIBUSB_1_INCLUDE_DIRS})
+          INCLUDE_DIRECTORIES(${Mcrypt_INCLUDE_DIR})
+          INCLUDE_DIRECTORIES(${HIDAPI_INCLUDE_DIR})
+          INCLUDE_DIRECTORIES(${EMOKIT_INCLUDE_DIR})
+
+          LIST(APPEND LIBEPOC_REQUIRED_LIBS ${LIBUSB_1_LIBRARIES} ${Mcrypt_LIBS} ${HIDAPI_LIBS})
+
+          SET(EMOKIT_LIBS ${EMOKIT_LIB} ${Mcrypt_LIBS} ${LIBUSB_1_LIBRARIES} ${HIDAPI_LIBS})
         
-        INCLUDE_DIRECTORIES(${EMOKIT_INCLUDE_DIR})
-        MESSAGE(STATUS "    [  OK  ] lib ${EMOKIT_LIB}")    
-        SET(EMOKIT_LIBS ${EMOKIT_LIB} ${Mcrypt_LIBS} ${LIBUSB_1_LIBRARIES})
-        
-        TARGET_LINK_LIBRARIES(${PROJECT_NAME}-dynamic ${EMOKIT_LIBS} )
+          TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${EMOKIT_LIBS} )
 	      ADD_DEFINITIONS(-DTARGET_HAS_ThirdPartyEmokit)
+        ELSE(HIDAPI_FOUND)
+          MESSAGE(STATUS "    [FAILED] Third party lib HIDAPI not found.")
+        ENDIF(HIDAPI_FOUND)
       ELSE(Mcrypt_FOUND)
-      	MESSAGE(STATUS "  FAILED to find mcrypt")
-    	ENDIF()
-    ELSE()
-    	MESSAGE(STATUS "  FAILED to find libusb-1.0")
+        MESSAGE(STATUS "    [FAILED] Third party lib mcrypt not found.")
+      ENDIF(Mcrypt_FOUND)
+    ELSE(LIBUSB_1_FOUND)
+    	MESSAGE(STATUS "    [FAILED] Third party lib libusb-1.0 not found.")
     ENDIF(LIBUSB_1_FOUND)
   ELSE()
-	  MESSAGE(STATUS "  FAILED to find Emokit")
+	  MESSAGE(STATUS "  FAILED to find lib Emokit")
   ENDIF()
-ELSE()
-  MESSAGE(STATUS "  FAILED to find Emokit (Please write cmake module")
+ELSE(UNIX)
+  MESSAGE(STATUS "  FAILED to find lib Emokit on your platform (you should write cmake module).")
 ENDIF(UNIX)
 
