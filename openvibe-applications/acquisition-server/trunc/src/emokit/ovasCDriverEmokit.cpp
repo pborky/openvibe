@@ -245,7 +245,7 @@ boolean CDriverEmokit::isConfigurable(void)
 
 boolean CDriverEmokit::configure(void)
 {
-	CConfigurationEmokit m_oConfiguration(m_rDriverContext, "../share/openvibe-applications/acquisition-server/interface-Emokit.ui", m_bUseGyroscope, m_ui32UserID); 
+    CConfigurationEmokit m_oConfiguration(m_rDriverContext, OpenViBE::Directories::getDataDir() + "/openvibe-applications/acquisition-server/interface-Emokit.ui", m_bUseGyroscope, m_ui32UserID);
 
 	if(!m_oConfiguration.configure(m_oHeader)) 
 	{
