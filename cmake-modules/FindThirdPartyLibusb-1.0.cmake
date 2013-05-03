@@ -16,6 +16,7 @@
 # For details see the accompanying COPYING-CMAKE-SCRIPTS file.
 #
 
+IF(UNIX)
 
 if (LIBUSB_1_LIBRARIES AND LIBUSB_1_INCLUDE_DIRS)
   # in cache already
@@ -56,17 +57,20 @@ else (LIBUSB_1_LIBRARIES AND LIBUSB_1_INCLUDE_DIRS)
 
   if (LIBUSB_1_FOUND)
     if (NOT libusb_1_FIND_QUIETLY)
-      message(STATUS "Found libusb-1.0:")
-	  message(STATUS " - Includes: ${LIBUSB_1_INCLUDE_DIRS}")
-	  message(STATUS " - Libraries: ${LIBUSB_1_LIBRARIES}")
+      message(STATUS "  Found libusb-1.0")
+      MESSAGE(STATUS "    [  OK  ] Third party lib ${LIBUSB_1_LIBRARIES}")
+      MESSAGE(STATUS "    [  OK  ] Third party headers ${LIBUSB_1_INCLUDE_DIRS}")
     endif (NOT libusb_1_FIND_QUIETLY)
   else (LIBUSB_1_FOUND)
-    if (libusb_1_FIND_REQUIRED)
-      message(FATAL_ERROR "Could not find libusb")
-    endif (libusb_1_FIND_REQUIRED)
+    message(STATUS "  FAILED to find lib libusb-1.0.")
   endif (LIBUSB_1_FOUND)
 
   # show the LIBUSB_1_INCLUDE_DIRS and LIBUSB_1_LIBRARIES variables only in the advanced view
   mark_as_advanced(LIBUSB_1_INCLUDE_DIRS LIBUSB_1_LIBRARIES)
-
 endif (LIBUSB_1_LIBRARIES AND LIBUSB_1_INCLUDE_DIRS)
+
+else(UNIX)
+   MESSAGE(STATUS "  FAILED to find lib libusb-1.0 on your platform (you should write cmake module).")    
+endif(UNIX)
+
+
