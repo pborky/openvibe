@@ -57,6 +57,9 @@ namespace OpenViBEAcquisitionServer
 		emokit_device* m_device;
 		OpenViBE::uint32 m_ui32UserID;
 		OpenViBE::boolean m_bUseGyroscope;
+		
+		double qual(short value);
+		double sign(int value);
 	};
 };
 

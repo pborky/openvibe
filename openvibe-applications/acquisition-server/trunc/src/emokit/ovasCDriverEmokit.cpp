@@ -163,6 +163,16 @@ boolean CDriverEmokit::start(void)
 	return true;
 }
 
+double CDriverEmokit::qual(short value)
+{
+	return 10000. - 1.25 * ( (double) value  ) ;
+}
+
+double CDriverEmokit::sign(int value)
+{	
+	return (double) value ;
+}
+
 boolean CDriverEmokit::loop(void)
 {
 	if(!m_rDriverContext.isConnected())
@@ -175,34 +185,64 @@ boolean CDriverEmokit::loop(void)
 		int read_result = emokit_read_data( m_device );
 		if( read_result > 0 )
 		{
-			emokit_get_next_frame( m_device );
-			m_pSample[0] = float32( m_device->current_frame.AF3 );
-			m_pSample[1] = float32( m_device->current_frame.F7 );
-			m_pSample[2] = float32( m_device->current_frame.F3 );
-			m_pSample[3] = float32( m_device->current_frame.FC5 );
-			m_pSample[4] = float32( m_device->current_frame.T7 );
-			m_pSample[5] = float32( m_device->current_frame.P7 );
-			m_pSample[6] = float32( m_device->current_frame.O1 );
-			m_pSample[7] = float32( m_device->current_frame.O2 );
-			m_pSample[8] = float32( m_device->current_frame.P8 );
-			m_pSample[9] = float32( m_device->current_frame.T8 );
-			m_pSample[10] = float32( m_device->current_frame.FC6 );
-			m_pSample[11] = float32( m_device->current_frame.F4 );
-			m_pSample[12] = float32( m_device->current_frame.F8 );
-			m_pSample[13] = float32( m_device->current_frame.AF4 );
+			struct emokit_frame frame = emokit_get_next_frame( m_device );
+			m_pSample[0] = sign( frame.AF3 );
+			m_pSample[1] = sign( frame.F7 );
+			m_pSample[2] = sign( frame.F3 );
+			m_pSample[3] = sign( frame.FC5 );
+			m_pSample[4] = sign( frame.T7 );
+			m_pSample[5] = sign( frame.P7 );
+			m_pSample[6] = sign( frame.O1 );
+			m_pSample[7] = sign( frame.O2 );
+			m_pSample[8] = sign( frame.P8 );
+			m_pSample[9] = sign( frame.T8 );
+			m_pSample[10] = sign( frame.FC6 );
+			m_pSample[11] = sign( frame.F4 );
+			m_pSample[12] = sign( frame.F8 );
+			m_pSample[13] = sign( frame.AF4 );
 			if(m_bUseGyroscope)
 			{
-				m_pSample[14] = float32( m_device->current_frame.gyroX );
-				m_pSample[15] = float32( m_device->current_frame.gyroY );
+				m_pSample[14] = sign( frame.gyroX );
+				m_pSample[15] = sign( frame.gyroY );
 			}
 			m_pCallback->setSamples( m_pSample, 1 );
 			m_rDriverContext.correctDriftSampleCount(m_rDriverContext.getSuggestedDriftCorrectionSampleCount());
+			
 		}
 		else
 		{
 			m_rDriverContext.getLogManager() << LogLevel_Error << "[LOOP] emokit_read_data returned " << read_result << "\n";
 		}
 	
+	}
+	else
+	{
+		if (m_rDriverContext.isImpedanceCheckRequested())
+		{
+			int read_result = emokit_read_data( m_device );
+			if( read_result > 0 )
+			{
+				struct emokit_frame frame = emokit_get_next_frame( m_device );				
+				m_rDriverContext.updateImpedance(0, qual( frame.cq.AF3 ));
+				m_rDriverContext.updateImpedance(1, qual( frame.cq.F7 ));
+				m_rDriverContext.updateImpedance(2, qual( frame.cq.F3 ));
+				m_rDriverContext.updateImpedance(3, qual( frame.cq.FC5 ));
+				m_rDriverContext.updateImpedance(4, qual( frame.cq.T7 ));
+				m_rDriverContext.updateImpedance(5, qual( frame.cq.P7 ));
+				m_rDriverContext.updateImpedance(6, qual( frame.cq.O1 ));
+				m_rDriverContext.updateImpedance(7, qual( frame.cq.O2 ));
+				m_rDriverContext.updateImpedance(8, qual( frame.cq.P8 ));
+				m_rDriverContext.updateImpedance(9, qual( frame.cq.T8 ));
+				m_rDriverContext.updateImpedance(10, qual( frame.cq.FC6 ));
+				m_rDriverContext.updateImpedance(11, qual( frame.cq.F4 ));
+				m_rDriverContext.updateImpedance(12, qual( frame.cq.F8 ));
+				m_rDriverContext.updateImpedance(13, qual( frame.cq.AF4 ));
+			}
+			else
+			{
+				m_rDriverContext.getLogManager() << LogLevel_Error << "[LOOP] emokit_read_data returned " << read_result << "\n";
+			}
+		}
 	}
 	return true;
 }
